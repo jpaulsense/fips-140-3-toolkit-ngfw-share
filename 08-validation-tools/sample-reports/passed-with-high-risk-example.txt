@@ -1,7 +1,7 @@
 ============================================================
 FIPS 140-3 COMPLIANCE VALIDATION
 ============================================================
-Firewall: 10.82.84.14
+Firewall: 192.0.2.1
 Date: 2025-12-15 20:52:33
 [INFO] Authenticating to firewall...
 [PASS] Successfully authenticated
@@ -10,15 +10,15 @@ Date: 2025-12-15 20:52:33
 GATHERING PROFILE USAGE INFORMATION
 ============================================================
 [INFO] Checking IKE gateway configurations...
-[INFO]   IKE Gateway 'Prisma-SC-1' uses profile: Jared-custom
+[INFO]   IKE Gateway 'Prisma-SC-1' uses profile: custom-ike-profile
 [INFO] Checking IPSec tunnel configurations...
-[INFO]   IPSec Tunnel 'Prisma-SC1-primary' uses profile: jared-custom
+[INFO]   IPSec Tunnel 'Prisma-SC1-primary' uses profile: custom-ipsec-profile
 [INFO] Checking GlobalProtect gateway configurations...
 [INFO] Checking GlobalProtect portal configurations...
 [INFO] Checking management interface configuration...
 [INFO] Checking decryption rule configurations...
 [INFO] Checking interface configurations...
-[INFO]   Interface 'ethernet1/8' uses mgmt profile: Astound
+[INFO]   Interface 'ethernet1/8' uses mgmt profile: external-interface
 
 [INFO] IKE crypto profiles in use: 1
 [INFO] IPSec crypto profiles in use: 1
@@ -45,7 +45,7 @@ IKE CRYPTO PROFILES
 [PASS] Hash algorithms compliant
 [PASS] DH groups compliant
 
-[INFO] Checking profile: Jared-custom [IN USE]
+[INFO] Checking profile: custom-ike-profile [IN USE]
 [PASS] Encryption algorithms compliant
 [PASS] Hash algorithms compliant
 [PASS] DH groups compliant
@@ -84,7 +84,7 @@ IPSEC CRYPTO PROFILES
 [PASS] ESP authentication compliant
 [PASS] DH group (PFS) compliant: group20
 
-[INFO] Checking profile: jared-custom [IN USE]
+[INFO] Checking profile: custom-ipsec-profile [IN USE]
 [PASS] ESP encryption compliant
 [PASS] ESP authentication compliant
 [PASS] DH group (PFS) compliant: group20
@@ -138,7 +138,7 @@ DECRYPTION PROFILES
 INTERFACE MANAGEMENT PROFILES
 ============================================================
 
-[INFO] Checking profile: Astound [IN USE]
+[INFO] Checking profile: external-interface [IN USE]
 [PASS] Telnet is disabled
 [PASS] HTTP is disabled
 [WARN] No secure management protocols enabled
@@ -192,7 +192,7 @@ Recommendation: Remove or update unused non-compliant profiles
 to prevent accidental use in future configurations.
 
 Report generated: 2025-12-15 20:52:39
-Firewall: 10.82.84.14
+Firewall: 192.0.2.1
 
 ============================================================
 HIGH RISK ITEMS (Cleanup Recommended)
@@ -214,7 +214,7 @@ should be removed or updated to prevent accidental use:
 WARNINGS (Review Recommended)
 ============================================================
 
-1. Interface Management Profile 'Astound'
+1. Interface Management Profile 'external-interface'
    - No secure management protocols (SSH/HTTPS) enabled
    - Applied to: ethernet1/8
    - Recommendation: Enable SSH and/or HTTPS for management access
@@ -235,7 +235,7 @@ NEXT STEPS
 2. To address warnings:
    - Assign SSL/TLS profile to management interface:
      set deviceconfig system ssl-tls-service-profile fips-ssl-tls-recommended
-   - Update 'Astound' interface management profile to enable SSH/HTTPS
+   - Update 'external-interface' interface management profile to enable SSH/HTTPS
 
 3. The following FIPS-compliant profiles are available for use:
    - IKE: fips-ike-crypto-max, fips-ike-crypto-recommended, fips-ike-crypto-compat

@@ -129,7 +129,7 @@ Profiles that are **not referenced anywhere** in the configuration are marked as
 ============================================================
 FIPS 140-3 COMPLIANCE VALIDATION
 ============================================================
-Firewall: 10.82.84.14
+Firewall: 192.0.2.1
 Date: 2024-12-15 14:30:00
 
 [INFO] Authenticating to firewall...

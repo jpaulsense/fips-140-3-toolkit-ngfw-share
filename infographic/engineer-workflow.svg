@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" width="1400" height="900">
+  <defs>
+    <!-- PANW Brand Header Gradient: Cyber Orange to Dark -->
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FA582D;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#190000;stop-opacity:1" />
+    </linearGradient>
+    <!-- Strata Yellow Gradient (Primary GTM for NGFW) -->
+    <linearGradient id="strataGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFCB06;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D69F25;stop-opacity:1" />
+    </linearGradient>
+    <!-- Cyber Orange Gradient (Primary Brand) -->
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FA582D;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B23808;stop-opacity:1" />
+    </linearGradient>
+    <!-- Prisma Blue Gradient (for SCM Cloud elements only) -->
+    <linearGradient id="scmGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#00C0E8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0196B3;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.15"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#4a5568"/>
+    </marker>
+    <marker id="arrowOrange" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#FA582D"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="900" fill="#f7fafc"/>
+
+  <!-- 4px Cyber Orange Accent Bar -->
+  <rect x="0" y="0" width="1400" height="4" fill="#FA582D"/>
+
+  <!-- Header -->
+  <rect x="0" y="4" width="1400" height="76" fill="url(#headerGrad)"/>
+  <text x="700" y="42" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="28" font-weight="bold">Engineer's FIPS 140-3 compliance workflow</text>
+  <text x="700" y="68" text-anchor="middle" fill="#FFBF9C" font-family="Arial, sans-serif" font-size="14">Step-by-step guide from assessment to continuous compliance</text>
+
+  <!-- Phase 1: Plan & Assess (Strata Yellow - NGFW planning) -->
+  <rect x="40" y="110" width="240" height="340" rx="12" fill="white" stroke="#FFCB06" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="40" y="110" width="240" height="50" rx="12" fill="url(#strataGrad)"/>
+  <text x="75" y="145" fill="#1A1A1A" font-family="Arial, sans-serif" font-size="28" font-weight="bold">01</text>
+  <text x="115" y="142" fill="#1A1A1A" font-family="Arial, sans-serif" font-size="16" font-weight="bold">PLAN &amp; ASSESS</text>
+
+  <!-- Phase 1 content -->
+  <text x="60" y="185" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Review requirements</text>
+  <rect x="60" y="195" width="200" height="25" rx="4" fill="#FFF0CC"/>
+  <text x="70" y="213" fill="#D69F25" font-family="monospace" font-size="10">00-overview/README.md</text>
+
+  <text x="60" y="245" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Choose deployment model</text>
+  <rect x="60" y="255" width="95" height="35" rx="4" fill="#FFF0CC"/>
+  <text x="107" y="278" text-anchor="middle" fill="#D69F25" font-family="Arial, sans-serif" font-size="11" font-weight="bold">On-Prem</text>
+  <rect x="165" y="255" width="95" height="35" rx="4" fill="#D9F8FC"/>
+  <text x="212" y="278" text-anchor="middle" fill="#0196B3" font-family="Arial, sans-serif" font-size="11" font-weight="bold">SCM Cloud</text>
+
+  <text x="60" y="315" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Select compliance tier</text>
+  <rect x="60" y="325" width="60" height="28" rx="4" fill="#FFBF9C"/>
+  <text x="90" y="344" text-anchor="middle" fill="#B23808" font-family="Arial, sans-serif" font-size="10" font-weight="bold">MAX</text>
+  <rect x="130" y="325" width="60" height="28" rx="4" fill="#FFF0CC"/>
+  <text x="160" y="344" text-anchor="middle" fill="#D69F25" font-family="Arial, sans-serif" font-size="10" font-weight="bold">REC</text>
+  <rect x="200" y="325" width="60" height="28" rx="4" fill="#FFDE73"/>
+  <text x="230" y="344" text-anchor="middle" fill="#D69F25" font-family="Arial, sans-serif" font-size="10" font-weight="bold">COMPAT</text>
+
+  <text x="60" y="380" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Identify target areas</text>
+  <text x="60" y="400" fill="#718096" font-family="Arial, sans-serif" font-size="11">IKE/IPSec | SSL/TLS | SSH</text>
+  <text x="60" y="418" fill="#718096" font-family="Arial, sans-serif" font-size="11">Admin Interface | GlobalProtect</text>
+
+  <!-- Arrow 1-2 -->
+  <line x1="280" y1="280" x2="310" y2="280" stroke="#FA582D" stroke-width="3" marker-end="url(#arrowOrange)"/>
+
+  <!-- Phase 2: Configure (Cyber Orange - Primary action) -->
+  <rect x="320" y="110" width="240" height="340" rx="12" fill="white" stroke="#FA582D" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="320" y="110" width="240" height="50" rx="12" fill="url(#orangeGrad)"/>
+  <text x="355" y="145" fill="white" font-family="Arial, sans-serif" font-size="28" font-weight="bold">02</text>
+  <text x="395" y="142" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">CONFIGURE</text>
+
+  <!-- Phase 2 content -->
+  <text x="340" y="185" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Choose method</text>
+  <rect x="340" y="195" width="180" height="60" rx="4" fill="#FFBF9C"/>
+  <text x="350" y="215" fill="#B23808" font-family="Arial, sans-serif" font-size="11">CLI Commands</text>
+  <text x="350" y="232" fill="#B23808" font-family="Arial, sans-serif" font-size="11">XML API Snippets</text>
+  <text x="350" y="249" fill="#B23808" font-family="Arial, sans-serif" font-size="11">Python SDK | Bash | Web UI</text>
+
+  <text x="340" y="280" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Apply crypto profiles</text>
+  <rect x="340" y="290" width="180" height="80" rx="4" fill="#1A1A1A"/>
+  <text x="350" y="310" fill="#FFCB06" font-family="monospace" font-size="9">set network ike crypto-profiles</text>
+  <text x="350" y="325" fill="#FFCB06" font-family="monospace" font-size="9">  fips-ike-256gcm</text>
+  <text x="350" y="340" fill="#FFCB06" font-family="monospace" font-size="9">  hash sha512</text>
+  <text x="350" y="355" fill="#FFCB06" font-family="monospace" font-size="9">  encryption aes-256-gcm</text>
+
+  <text x="340" y="395" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Reference docs</text>
+  <text x="340" y="415" fill="#718096" font-family="monospace" font-size="10">01-ipsec-ike/</text>
+  <text x="340" y="432" fill="#718096" font-family="monospace" font-size="10">02-ssl-tls/ | 03-ssh/</text>
+
+  <!-- Arrow 2-3 -->
+  <line x1="560" y1="280" x2="590" y2="280" stroke="#FA582D" stroke-width="3" marker-end="url(#arrowOrange)"/>
+
+  <!-- Phase 3: Validate (Strata Yellow - Compliance check) -->
+  <rect x="600" y="110" width="240" height="340" rx="12" fill="white" stroke="#FFCB06" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="600" y="110" width="240" height="50" rx="12" fill="url(#strataGrad)"/>
+  <text x="635" y="145" fill="#1A1A1A" font-family="Arial, sans-serif" font-size="28" font-weight="bold">03</text>
+  <text x="675" y="142" fill="#1A1A1A" font-family="Arial, sans-serif" font-size="16" font-weight="bold">VALIDATE</text>
+
+  <!-- Phase 3 content -->
+  <text x="620" y="185" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Run compliance check</text>
+  <rect x="620" y="195" width="200" height="45" rx="4" fill="#1A1A1A"/>
+  <text x="630" y="215" fill="#FFCB06" font-family="monospace" font-size="9">$ python fips-compliance-</text>
+  <text x="630" y="230" fill="#FFCB06" font-family="monospace" font-size="9">    validator.py -f 10.0.0.1</text>
+
+  <text x="620" y="265" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Check results</text>
+  <rect x="620" y="275" width="60" height="40" rx="4" fill="#FFF0CC"/>
+  <text x="650" y="300" text-anchor="middle" fill="#D69F25" font-family="Arial, sans-serif" font-size="10" font-weight="bold">PASS</text>
+  <rect x="690" y="275" width="60" height="40" rx="4" fill="#FFBF9C"/>
+  <text x="720" y="300" text-anchor="middle" fill="#B23808" font-family="Arial, sans-serif" font-size="10" font-weight="bold">WARN</text>
+  <rect x="760" y="275" width="60" height="40" rx="4" fill="#FFD7CF"/>
+  <text x="790" y="300" text-anchor="middle" fill="#AA251B" font-family="Arial, sans-serif" font-size="10" font-weight="bold">FAIL</text>
+
+  <text x="620" y="345" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Validator features</text>
+  <text x="620" y="365" fill="#718096" font-family="Arial, sans-serif" font-size="11">Active profile detection</text>
+  <text x="620" y="382" fill="#718096" font-family="Arial, sans-serif" font-size="11">Algorithm compliance check</text>
+  <text x="620" y="399" fill="#718096" font-family="Arial, sans-serif" font-size="11">TLS version validation</text>
+  <text x="620" y="416" fill="#718096" font-family="Arial, sans-serif" font-size="11">Detailed remediation report</text>
+
+  <!-- Remediation loop arrow -->
+  <path d="M 720 450 L 720 475 L 440 475 L 440 455" fill="none" stroke="#B23808" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
+  <text x="580" y="490" text-anchor="middle" fill="#B23808" font-family="Arial, sans-serif" font-size="10">Remediate if failed</text>
+
+  <!-- Arrow 3-4 -->
+  <line x1="840" y1="280" x2="870" y2="280" stroke="#FA582D" stroke-width="3" marker-end="url(#arrowOrange)"/>
+
+  <!-- Phase 4: Deploy (Split - NGFW Orange / SCM Blue) -->
+  <rect x="880" y="110" width="240" height="340" rx="12" fill="white" stroke="#FA582D" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="880" y="110" width="240" height="50" rx="12" fill="url(#orangeGrad)"/>
+  <text x="915" y="145" fill="white" font-family="Arial, sans-serif" font-size="28" font-weight="bold">04</text>
+  <text x="955" y="142" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">DEPLOY</text>
+
+  <!-- Phase 4 content -->
+  <text x="900" y="185" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">On-premises NGFW</text>
+  <rect x="900" y="195" width="200" height="35" rx="4" fill="#FFF0CC"/>
+  <text x="910" y="218" fill="#D69F25" font-family="monospace" font-size="11">$ commit</text>
+
+  <text x="900" y="255" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">SCM Cloud</text>
+  <rect x="900" y="265" width="200" height="55" rx="4" fill="#D9F8FC"/>
+  <text x="910" y="285" fill="#0196B3" font-family="monospace" font-size="10">client.push_config(</text>
+  <text x="910" y="300" fill="#0196B3" font-family="monospace" font-size="10">  folders=["Shared"]</text>
+  <text x="910" y="315" fill="#0196B3" font-family="monospace" font-size="10">)</text>
+
+  <text x="900" y="345" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Deployment tools</text>
+  <text x="900" y="365" fill="#718096" font-family="monospace" font-size="10">09-scm-api-toolkit/</text>
+  <text x="900" y="382" fill="#718096" font-family="monospace" font-size="10">  07-examples/</text>
+  <text x="900" y="399" fill="#718096" font-family="monospace" font-size="10">    deploy-fips-profiles.py</text>
+  <text x="900" y="416" fill="#718096" font-family="monospace" font-size="10">    deploy-fips-profiles.sh</text>
+
+  <!-- Arrow 4-5 -->
+  <line x1="1120" y1="280" x2="1150" y2="280" stroke="#FA582D" stroke-width="3" marker-end="url(#arrowOrange)"/>
+
+  <!-- Phase 5: Monitor (Strata Yellow - Ongoing) -->
+  <rect x="1160" y="110" width="200" height="340" rx="12" fill="white" stroke="#FFCB06" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="1160" y="110" width="200" height="50" rx="12" fill="url(#strataGrad)"/>
+  <text x="1195" y="145" fill="#1A1A1A" font-family="Arial, sans-serif" font-size="28" font-weight="bold">05</text>
+  <text x="1235" y="142" fill="#1A1A1A" font-family="Arial, sans-serif" font-size="16" font-weight="bold">MONITOR</text>
+
+  <!-- Phase 5 content -->
+  <text x="1180" y="185" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Ongoing compliance</text>
+  <text x="1180" y="208" fill="#718096" font-family="Arial, sans-serif" font-size="11">Schedule periodic</text>
+  <text x="1180" y="225" fill="#718096" font-family="Arial, sans-serif" font-size="11">validation checks</text>
+
+  <text x="1180" y="260" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">CI/CD integration</text>
+  <rect x="1180" y="270" width="160" height="45" rx="4" fill="#1A1A1A"/>
+  <text x="1190" y="290" fill="#FFCB06" font-family="monospace" font-size="9"># GitHub Actions</text>
+  <text x="1190" y="305" fill="#FFCB06" font-family="monospace" font-size="9">- run: validate.py</text>
+
+  <text x="1180" y="340" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Audit trail</text>
+  <text x="1180" y="360" fill="#718096" font-family="Arial, sans-serif" font-size="11">Compliance reports</text>
+  <text x="1180" y="377" fill="#718096" font-family="Arial, sans-serif" font-size="11">stored in Git</text>
+
+  <text x="1180" y="410" fill="#2d3748" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Sample reports</text>
+  <text x="1180" y="430" fill="#718096" font-family="monospace" font-size="9">08-validation-tools/</text>
+  <text x="1180" y="447" fill="#718096" font-family="monospace" font-size="9">  sample-reports/</text>
+
+  <!-- Bottom Section: Quick Reference -->
+  <rect x="40" y="510" width="1320" height="180" rx="10" fill="white" stroke="#718096" stroke-width="2" filter="url(#shadow)"/>
+  <!-- 4px accent bar on quick reference section -->
+  <rect x="40" y="510" width="1320" height="4" rx="2" fill="#FA582D"/>
+  <text x="700" y="545" text-anchor="middle" fill="#0D0D0D" font-family="Arial, sans-serif" font-size="18" font-weight="bold">Quick reference: FIPS 140-3 approved algorithms</text>
+
+  <!-- Approved column (Strata Yellow) -->
+  <rect x="60" y="565" width="620" height="105" rx="8" fill="#FFF0CC" stroke="#FFCB06" stroke-width="2"/>
+  <text x="370" y="590" text-anchor="middle" fill="#D69F25" font-family="Arial, sans-serif" font-size="14" font-weight="bold">FIPS-APPROVED (Use These)</text>
+  <text x="80" y="615" fill="#D69F25" font-family="monospace" font-size="12">Encryption: AES-128-CBC, AES-256-CBC, AES-128-GCM, AES-256-GCM</text>
+  <text x="80" y="635" fill="#D69F25" font-family="monospace" font-size="12">Hashing: SHA-256, SHA-384, SHA-512</text>
+  <text x="80" y="655" fill="#D69F25" font-family="monospace" font-size="12">DH Groups: 14, 15, 16, 19, 20, 21  |  TLS: 1.2, 1.3</text>
+
+  <!-- Non-approved column (Error Red) -->
+  <rect x="700" y="565" width="640" height="105" rx="8" fill="#FFD7CF" stroke="#C84727" stroke-width="2"/>
+  <text x="1020" y="590" text-anchor="middle" fill="#AA251B" font-family="Arial, sans-serif" font-size="14" font-weight="bold">NON-COMPLIANT (Remove These)</text>
+  <text x="720" y="615" fill="#AA251B" font-family="monospace" font-size="12">Encryption: 3DES, DES, NULL, RC4</text>
+  <text x="720" y="635" fill="#AA251B" font-family="monospace" font-size="12">Hashing: MD5, SHA-1</text>
+  <text x="720" y="655" fill="#AA251B" font-family="monospace" font-size="12">DH Groups: 1, 2, 5, no-pfs  |  TLS: 1.0, 1.1</text>
+
+  <!-- Key insight box (Prisma Blue for cloud benefit) -->
+  <rect x="40" y="710" width="1320" height="60" rx="8" fill="#D9F8FC" stroke="#00C0E8" stroke-width="2"/>
+  <text x="700" y="748" text-anchor="middle" fill="#0196B3" font-family="Arial, sans-serif" font-size="14">
+    <tspan font-weight="bold">Key insight:</tspan> This toolkit enables FIPS 140-3 compliance WITHOUT requiring CC-mode, avoiding factory resets and operational restrictions while maintaining full feature availability.
+  </text>
+
+  <!-- Bottom requirements bar -->
+  <rect x="40" y="790" width="1320" height="50" rx="8" fill="#1A1A1A"/>
+  <text x="700" y="822" text-anchor="middle" fill="#FFBF9C" font-family="Arial, sans-serif" font-size="13">
+    <tspan font-weight="bold">Requirements:</tspan> PAN-OS 10.1+ | Python 3.8+ (for SDK) | bash 4.0+ | curl 7.68+ | jq 1.6+
+  </text>
+
+  <!-- Footer -->
+  <rect x="0" y="855" width="1400" height="45" fill="#0D0D0D"/>
+  <text x="700" y="883" text-anchor="middle" fill="#718096" font-family="Arial, sans-serif" font-size="12">FIPS 140-3 Compliance Toolkit | Palo Alto Networks | On-Premises NGFW &amp; Strata Cloud Manager</text>
+</svg>
