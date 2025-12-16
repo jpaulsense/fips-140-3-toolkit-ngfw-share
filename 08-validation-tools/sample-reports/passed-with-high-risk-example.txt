@@ -1,0 +1,243 @@
+============================================================
+FIPS 140-3 COMPLIANCE VALIDATION
+============================================================
+Firewall: 10.82.84.14
+Date: 2025-12-15 20:52:33
+[INFO] Authenticating to firewall...
+[PASS] Successfully authenticated
+
+============================================================
+GATHERING PROFILE USAGE INFORMATION
+============================================================
+[INFO] Checking IKE gateway configurations...
+[INFO]   IKE Gateway 'Prisma-SC-1' uses profile: Jared-custom
+[INFO] Checking IPSec tunnel configurations...
+[INFO]   IPSec Tunnel 'Prisma-SC1-primary' uses profile: jared-custom
+[INFO] Checking GlobalProtect gateway configurations...
+[INFO] Checking GlobalProtect portal configurations...
+[INFO] Checking management interface configuration...
+[INFO] Checking decryption rule configurations...
+[INFO] Checking interface configurations...
+[INFO]   Interface 'ethernet1/8' uses mgmt profile: Astound
+
+[INFO] IKE crypto profiles in use: 1
+[INFO] IPSec crypto profiles in use: 1
+[INFO] SSL/TLS profiles in use: 0
+[INFO] Decryption profiles in use: 0
+[INFO] Management profiles in use: 1
+
+============================================================
+IKE CRYPTO PROFILES
+============================================================
+
+[INFO] Checking profile: default [NOT USED]
+[HIGH RISK] Non-compliant encryption (not in use): 3des
+[HIGH RISK] Non-compliant hash (not in use): sha1
+[HIGH RISK] Non-compliant DH group (not in use): group2
+
+[INFO] Checking profile: Suite-B-GCM-128 [NOT USED]
+[PASS] Encryption algorithms compliant
+[PASS] Hash algorithms compliant
+[PASS] DH groups compliant
+
+[INFO] Checking profile: Suite-B-GCM-256 [NOT USED]
+[PASS] Encryption algorithms compliant
+[PASS] Hash algorithms compliant
+[PASS] DH groups compliant
+
+[INFO] Checking profile: Jared-custom [IN USE]
+[PASS] Encryption algorithms compliant
+[PASS] Hash algorithms compliant
+[PASS] DH groups compliant
+
+[INFO] Checking profile: fips-ike-crypto-max [NOT USED]
+[PASS] Encryption algorithms compliant
+[PASS] Hash algorithms compliant
+[PASS] DH groups compliant
+
+[INFO] Checking profile: fips-ike-crypto-recommended [NOT USED]
+[PASS] Encryption algorithms compliant
+[PASS] Hash algorithms compliant
+[PASS] DH groups compliant
+
+[INFO] Checking profile: fips-ike-crypto-compat [NOT USED]
+[PASS] Encryption algorithms compliant
+[PASS] Hash algorithms compliant
+[PASS] DH groups compliant
+
+============================================================
+IPSEC CRYPTO PROFILES
+============================================================
+
+[INFO] Checking profile: default [NOT USED]
+[HIGH RISK] Non-compliant ESP encryption (not in use): 3des
+[HIGH RISK] Non-compliant ESP authentication (not in use): sha1
+[HIGH RISK] Non-compliant DH group (PFS) (not in use): group2
+
+[INFO] Checking profile: Suite-B-GCM-128 [NOT USED]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group19
+
+[INFO] Checking profile: Suite-B-GCM-256 [NOT USED]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: jared-custom [IN USE]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: fips-ipsec-crypto-max [NOT USED]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: fips-ipsec-crypto-recommended [NOT USED]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: fips-ipsec-crypto-compat [NOT USED]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group14
+
+[INFO] Checking profile: fips-ipsec-crypto-gp [NOT USED]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group19
+
+============================================================
+SSL/TLS SERVICE PROFILES
+============================================================
+
+[INFO] Checking profile: fips-ssl-tls-max [NOT USED]
+[PASS] Minimum TLS version compliant: tls1-2
+[PASS] Certificate assigned: fips-mgmt-cert
+
+[INFO] Checking profile: fips-ssl-tls-1-3-only [NOT USED]
+[PASS] Minimum TLS version compliant: tls1-3
+[PASS] Certificate assigned: fips-mgmt-cert
+
+[INFO] Checking profile: fips-ssl-tls-recommended [NOT USED]
+[PASS] Minimum TLS version compliant: tls1-2
+[PASS] Certificate assigned: fips-mgmt-cert
+
+============================================================
+DECRYPTION PROFILES
+============================================================
+
+[INFO] Checking profile: fips-decryption-profile [NOT USED]
+[PASS] Minimum TLS version compliant: tls1-2
+[PASS] Blocking expired certificates enabled
+[PASS] Blocking untrusted issuers enabled
+
+============================================================
+INTERFACE MANAGEMENT PROFILES
+============================================================
+
+[INFO] Checking profile: Astound [IN USE]
+[PASS] Telnet is disabled
+[PASS] HTTP is disabled
+[WARN] No secure management protocols enabled
+
+[INFO] Checking profile: fips-mgmt-profile [NOT USED]
+[PASS] Telnet is disabled
+[PASS] HTTP is disabled
+[PASS] Secure protocols: SSH=True, HTTPS=True
+
+[INFO] Checking profile: fips-https-only [NOT USED]
+[PASS] Telnet is disabled
+[PASS] HTTP is disabled
+[PASS] Secure protocols: SSH=False, HTTPS=True
+
+============================================================
+CERTIFICATE VALIDATION
+============================================================
+
+[INFO] Checking certificate: fips-root-ca
+[PASS] Key algorithm: RSA
+[PASS] Certificate valid for 3649 days
+[INFO] Certificate type: CA
+
+[INFO] Checking certificate: fips-mgmt-cert
+[PASS] Key algorithm: RSA
+[PASS] Certificate valid for 364 days
+[INFO] Certificate type: End-entity
+
+============================================================
+MANAGEMENT INTERFACE TLS
+============================================================
+[WARN] No SSL/TLS profile assigned to management (using defaults)
+
+============================================================
+COMPLIANCE SUMMARY
+============================================================
+
+PASSED:      61
+FAILED:      0   (Non-compliant AND in use)
+HIGH RISK:   6   (Non-compliant but NOT in use)
+WARNINGS:    2
+
+==================================================
+  FIPS 140-3 COMPLIANCE: PASSED WITH HIGH RISK
+==================================================
+
+No active non-compliant configurations, but
+6 unused non-compliant profile(s) exist.
+
+Recommendation: Remove or update unused non-compliant profiles
+to prevent accidental use in future configurations.
+
+Report generated: 2025-12-15 20:52:39
+Firewall: 10.82.84.14
+
+============================================================
+HIGH RISK ITEMS (Cleanup Recommended)
+============================================================
+
+The following non-compliant profiles exist but are NOT currently
+in use. While they don't pose an immediate security risk, they
+should be removed or updated to prevent accidental use:
+
+1. IKE Profile 'default'
+   - Contains: 3des encryption, sha1 hash, group2 DH
+   - Recommendation: Delete or update with compliant algorithms
+
+2. IPSec Profile 'default'
+   - Contains: 3des encryption, sha1 authentication, group2 PFS
+   - Recommendation: Delete or update with compliant algorithms
+
+============================================================
+WARNINGS (Review Recommended)
+============================================================
+
+1. Interface Management Profile 'Astound'
+   - No secure management protocols (SSH/HTTPS) enabled
+   - Applied to: ethernet1/8
+   - Recommendation: Enable SSH and/or HTTPS for management access
+
+2. Management Interface TLS
+   - No SSL/TLS service profile assigned
+   - Using system defaults
+   - Recommendation: Assign 'fips-ssl-tls-recommended' profile
+
+============================================================
+NEXT STEPS
+============================================================
+
+1. To achieve full compliance (PASSED status):
+   - Delete the 'default' IKE crypto profile or update it
+   - Delete the 'default' IPSec crypto profile or update it
+
+2. To address warnings:
+   - Assign SSL/TLS profile to management interface:
+     set deviceconfig system ssl-tls-service-profile fips-ssl-tls-recommended
+   - Update 'Astound' interface management profile to enable SSH/HTTPS
+
+3. The following FIPS-compliant profiles are available for use:
+   - IKE: fips-ike-crypto-max, fips-ike-crypto-recommended, fips-ike-crypto-compat
+   - IPSec: fips-ipsec-crypto-max, fips-ipsec-crypto-recommended, fips-ipsec-crypto-gp
+   - SSL/TLS: fips-ssl-tls-max, fips-ssl-tls-recommended, fips-ssl-tls-1-3-only

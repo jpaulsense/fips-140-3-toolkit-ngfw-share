@@ -1,0 +1,211 @@
+============================================================
+FIPS 140-3 COMPLIANCE VALIDATION - STRATA CLOUD MANAGER
+============================================================
+Tenant: TSG 5555555555
+Folder: Prisma Access
+Date: 2025-12-15 14:30:00
+[INFO] Authenticating to SCM API...
+[PASS] Successfully authenticated
+
+============================================================
+GATHERING PROFILE USAGE INFORMATION
+============================================================
+[INFO] Checking remote network configurations...
+[INFO]   Remote Network 'datacenter-east' uses IKE profile: fips-ike-crypto-max
+[INFO]   Remote Network 'datacenter-east' uses IPSec profile: fips-ipsec-crypto-max
+[INFO]   Remote Network 'datacenter-west' uses IKE profile: fips-ike-crypto-recommended
+[INFO]   Remote Network 'datacenter-west' uses IPSec profile: fips-ipsec-crypto-recommended
+[INFO]   Remote Network 'branch-offices' uses IKE profile: fips-ike-crypto-compat
+[INFO]   Remote Network 'branch-offices' uses IPSec profile: fips-ipsec-crypto-compat
+[INFO] Checking service connection configurations...
+[INFO]   Service Connection 'azure-hub' uses IKE profile: Suite-B-GCM-256
+[INFO]   Service Connection 'azure-hub' uses IPSec profile: Suite-B-GCM-256
+
+[INFO] IKE crypto profiles in use: 4
+[INFO] IPSec crypto profiles in use: 4
+
+============================================================
+IKE CRYPTO PROFILES
+============================================================
+
+[INFO] Checking profile: fips-ike-crypto-max [IN USE]
+[PASS] Encryption algorithms compliant: aes-256-gcm
+[PASS] Hash algorithms compliant: sha512
+[PASS] DH groups compliant: group20
+
+[INFO] Checking profile: fips-ike-crypto-recommended [IN USE]
+[PASS] Encryption algorithms compliant: aes-256-cbc, aes-128-gcm
+[PASS] Hash algorithms compliant: sha384, sha256
+[PASS] DH groups compliant: group20, group19
+
+[INFO] Checking profile: fips-ike-crypto-compat [IN USE]
+[PASS] Encryption algorithms compliant: aes-256-cbc, aes-256-gcm, aes-128-cbc, aes-128-gcm
+[PASS] Hash algorithms compliant: sha512, sha384, sha256
+[PASS] DH groups compliant: group20, group19, group16, group14
+
+[INFO] Checking profile: Suite-B-GCM-256 [IN USE]
+[PASS] Encryption algorithms compliant: aes-256-cbc
+[PASS] Hash algorithms compliant: sha384
+[PASS] DH groups compliant: group20
+
+[INFO] Checking profile: Suite-B-GCM-128 [NOT USED]
+[PASS] Encryption algorithms compliant: aes-128-cbc
+[PASS] Hash algorithms compliant: sha256
+[PASS] DH groups compliant: group19
+
+[INFO] Checking profile: CloudGenix-IKE-Crypto-Default [NOT USED]
+[PASS] Encryption algorithms compliant: aes-256-cbc
+[PASS] Hash algorithms compliant: sha512
+[WARN] Weak DH group (not in use): group5
+
+[INFO] Checking profile: CiscoASA-IKE-Crypto-Default [NOT USED]
+[WARN] Non-compliant encryption (not in use): 3des
+[WARN] Non-compliant hash (not in use): sha1, md5
+[WARN] Non-compliant DH group (not in use): group5, group2, group1
+
+[INFO] Checking profile: Others-IKE-Crypto-Default [NOT USED]
+[WARN] Non-compliant encryption (not in use): 3des
+[WARN] Non-compliant hash (not in use): sha1, md5
+[WARN] Non-compliant DH group (not in use): group5, group2, group1
+
+============================================================
+IPSEC CRYPTO PROFILES
+============================================================
+
+[INFO] Checking profile: fips-ipsec-crypto-max [IN USE]
+[PASS] ESP encryption compliant: aes-256-gcm
+[PASS] ESP authentication compliant: sha512
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: fips-ipsec-crypto-recommended [IN USE]
+[PASS] ESP encryption compliant: aes-256-gcm, aes-128-gcm
+[PASS] ESP authentication compliant: sha384, sha256
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: fips-ipsec-crypto-compat [IN USE]
+[PASS] ESP encryption compliant: aes-256-gcm, aes-256-cbc, aes-128-gcm, aes-128-cbc
+[PASS] ESP authentication compliant: sha512, sha384, sha256
+[PASS] DH group (PFS) compliant: group14
+
+[INFO] Checking profile: Suite-B-GCM-256 [IN USE]
+[PASS] ESP encryption compliant: aes-256-gcm
+[PASS] ESP authentication compliant: none (GCM mode)
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: Suite-B-GCM-128 [NOT USED]
+[PASS] ESP encryption compliant: aes-128-gcm
+[PASS] ESP authentication compliant: none (GCM mode)
+[PASS] DH group (PFS) compliant: group19
+
+[INFO] Checking profile: CiscoASA-IPSec-Crypto-Default [NOT USED]
+[WARN] Non-compliant ESP encryption (not in use): 3des
+[WARN] Non-compliant ESP authentication (not in use): sha1, md5
+[WARN] Non-compliant DH group (PFS) (not in use): group2
+
+[INFO] Checking profile: Others-IPSec-Crypto-Default [NOT USED]
+[WARN] Non-compliant ESP encryption (not in use): 3des
+[WARN] Non-compliant ESP authentication (not in use): sha1, md5
+[WARN] Non-compliant DH group (PFS) (not in use): group2
+
+============================================================
+COMPLIANCE SUMMARY
+============================================================
+
+IKE CRYPTO PROFILES:
+  Total:     8
+  In Use:    4 (all compliant)
+  Not Used:  4 (2 compliant, 2 with warnings)
+
+IPSEC CRYPTO PROFILES:
+  Total:     7
+  In Use:    4 (all compliant)
+  Not Used:  3 (1 compliant, 2 with warnings)
+
+OVERALL:
+  PASSED:    32 checks
+  FAILED:    0 checks (in use)
+  WARNINGS:  12 checks (not in use)
+
+==================================================
+  FIPS 140-3 COMPLIANCE: PASSED WITH WARNINGS
+==================================================
+
+All active configurations are FIPS 140-3 compliant.
+However, 4 unused profiles contain non-compliant algorithms.
+
+Recommendation: Remove or update unused non-compliant profiles
+to prevent accidental use in future configurations.
+
+Report generated: 2025-12-15 14:30:20
+Tenant: TSG 5555555555
+
+============================================================
+WARNING ITEMS (Cleanup Recommended)
+============================================================
+
+The following non-compliant profiles exist but are NOT currently
+in use. While they don't pose an immediate security risk, they
+should be removed or updated to prevent accidental use:
+
+1. IKE Profile 'CloudGenix-IKE-Crypto-Default'
+   - Contains: group5 DH
+   - Status: Default snippet profile
+   - Recommendation: Cannot delete default profiles, but ensure
+     it is never assigned to remote networks
+
+2. IKE Profile 'CiscoASA-IKE-Crypto-Default'
+   - Contains: 3des encryption, sha1/md5 hash, group1/2/5 DH
+   - Status: Default snippet profile
+   - Recommendation: Do not use for new connections
+
+3. IKE Profile 'Others-IKE-Crypto-Default'
+   - Contains: 3des encryption, sha1/md5 hash, group1/2/5 DH
+   - Status: Default snippet profile
+   - Recommendation: Do not use for new connections
+
+4. IPSec Profile 'CiscoASA-IPSec-Crypto-Default'
+   - Contains: 3des encryption, sha1/md5 auth, group2 PFS
+   - Status: Default snippet profile
+   - Recommendation: Do not use for new connections
+
+5. IPSec Profile 'Others-IPSec-Crypto-Default'
+   - Contains: 3des encryption, sha1/md5 auth, group2 PFS
+   - Status: Default snippet profile
+   - Recommendation: Do not use for new connections
+
+============================================================
+COMPLIANT PROFILES IN USE
+============================================================
+
+Remote Networks:
+  - datacenter-east: fips-ike-crypto-max / fips-ipsec-crypto-max
+  - datacenter-west: fips-ike-crypto-recommended / fips-ipsec-crypto-recommended
+  - branch-offices: fips-ike-crypto-compat / fips-ipsec-crypto-compat
+
+Service Connections:
+  - azure-hub: Suite-B-GCM-256 / Suite-B-GCM-256
+
+============================================================
+NEXT STEPS
+============================================================
+
+1. To achieve full compliance (PASSED status):
+   - Document which default profiles should never be used
+   - Create policy to only use fips-* prefixed profiles
+   - Consider creating custom profiles to replace defaults
+
+2. The following FIPS-compliant profiles are available:
+   - IKE: fips-ike-crypto-max, fips-ike-crypto-recommended, fips-ike-crypto-compat
+   - IPSec: fips-ipsec-crypto-max, fips-ipsec-crypto-recommended, fips-ipsec-crypto-compat
+   - Suite B: Suite-B-GCM-256, Suite-B-GCM-128
+
+============================================================
+AUDIT TRAIL
+============================================================
+
+Validation Tool: SCM FIPS 140-3 Compliance Validator v1.0
+Validation Date: 2025-12-15 14:30:20 UTC
+API Endpoint: api.strata.paloaltonetworks.com
+API Path: /sse/config/v1/
+Tenant Type: Prisma Access
+Validator: Automated API Check

@@ -1,0 +1,158 @@
+============================================================
+FIPS 140-3 COMPLIANCE VALIDATION - STRATA CLOUD MANAGER
+============================================================
+Tenant: TSG 9876543210
+Folder: Prisma Access
+Date: 2025-12-15 10:00:00
+[INFO] Authenticating to SCM API...
+[PASS] Successfully authenticated
+
+============================================================
+IKE CRYPTO PROFILES
+============================================================
+
+[INFO] Checking profile: fips-ike-crypto-max
+[PASS] Encryption algorithms compliant: aes-256-gcm
+[PASS] Hash algorithms compliant: sha512
+[PASS] DH groups compliant: group20
+
+[INFO] Checking profile: fips-ike-crypto-recommended
+[PASS] Encryption algorithms compliant: aes-256-cbc, aes-128-gcm
+[PASS] Hash algorithms compliant: sha384, sha256
+[PASS] DH groups compliant: group20, group19
+
+[INFO] Checking profile: fips-ike-crypto-compat
+[PASS] Encryption algorithms compliant: aes-256-cbc, aes-256-gcm, aes-128-cbc, aes-128-gcm
+[PASS] Hash algorithms compliant: sha512, sha384, sha256
+[PASS] DH groups compliant: group20, group19, group16, group14
+
+[INFO] Checking profile: Suite-B-GCM-256
+[PASS] Encryption algorithms compliant: aes-256-cbc
+[PASS] Hash algorithms compliant: sha384
+[PASS] DH groups compliant: group20
+
+[INFO] Checking profile: Suite-B-GCM-128
+[PASS] Encryption algorithms compliant: aes-128-cbc
+[PASS] Hash algorithms compliant: sha256
+[PASS] DH groups compliant: group19
+
+[INFO] Checking profile: datacenter-ike-profile
+[PASS] Encryption algorithms compliant: aes-256-gcm
+[PASS] Hash algorithms compliant: sha512
+[PASS] DH groups compliant: group21
+
+[INFO] Checking profile: branch-office-ike-profile
+[PASS] Encryption algorithms compliant: aes-256-cbc, aes-128-gcm
+[PASS] Hash algorithms compliant: sha384, sha256
+[PASS] DH groups compliant: group20, group19
+
+============================================================
+IPSEC CRYPTO PROFILES
+============================================================
+
+[INFO] Checking profile: fips-ipsec-crypto-max
+[PASS] ESP encryption compliant: aes-256-gcm
+[PASS] ESP authentication compliant: sha512
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: fips-ipsec-crypto-recommended
+[PASS] ESP encryption compliant: aes-256-gcm, aes-128-gcm
+[PASS] ESP authentication compliant: sha384, sha256
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: fips-ipsec-crypto-compat
+[PASS] ESP encryption compliant: aes-256-gcm, aes-256-cbc, aes-128-gcm, aes-128-cbc
+[PASS] ESP authentication compliant: sha512, sha384, sha256
+[PASS] DH group (PFS) compliant: group14
+
+[INFO] Checking profile: Suite-B-GCM-256
+[PASS] ESP encryption compliant: aes-256-gcm
+[PASS] ESP authentication compliant: none (GCM mode)
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: Suite-B-GCM-128
+[PASS] ESP encryption compliant: aes-128-gcm
+[PASS] ESP authentication compliant: none (GCM mode)
+[PASS] DH group (PFS) compliant: group19
+
+[INFO] Checking profile: datacenter-ipsec-profile
+[PASS] ESP encryption compliant: aes-256-gcm
+[PASS] ESP authentication compliant: sha512
+[PASS] DH group (PFS) compliant: group21
+
+[INFO] Checking profile: branch-office-ipsec-profile
+[PASS] ESP encryption compliant: aes-256-gcm, aes-128-gcm
+[PASS] ESP authentication compliant: sha384
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: mobile-users-ipsec-profile
+[PASS] ESP encryption compliant: aes-256-gcm
+[PASS] ESP authentication compliant: sha256
+[PASS] DH group (PFS) compliant: group19
+
+============================================================
+COMPLIANCE SUMMARY
+============================================================
+
+IKE CRYPTO PROFILES:
+  Total:     7
+  Compliant: 7
+  Failed:    0
+
+IPSEC CRYPTO PROFILES:
+  Total:     8
+  Compliant: 8
+  Failed:    0
+
+OVERALL:
+  PASSED:    45 checks
+  FAILED:    0 checks
+
+==================================================
+  FIPS 140-3 COMPLIANCE: PASSED
+==================================================
+
+All cryptographic configurations are FIPS 140-3 compliant.
+No non-compliant profiles found in the configuration.
+
+Report generated: 2025-12-15 10:00:15
+Tenant: TSG 9876543210
+
+============================================================
+COMPLIANCE ATTESTATION
+============================================================
+
+This SCM tenant has been validated for FIPS 140-3 cryptographic
+compliance across all IKE and IPSec crypto profiles.
+
+Validated Areas:
+  [+] IKE Phase 1 (IKEv2) Cryptography
+  [+] IPSec Phase 2 Cryptography
+  [+] Perfect Forward Secrecy (PFS)
+
+Compliant Algorithms in Use:
+  - Encryption: AES-256-GCM, AES-256-CBC, AES-128-GCM, AES-128-CBC
+  - Hash: SHA-512, SHA-384, SHA-256
+  - Key Exchange: ECDH P-521 (Group 21), ECDH P-384 (Group 20),
+                  ECDH P-256 (Group 19), DH 4096-bit (Group 16),
+                  DH 2048-bit (Group 14)
+
+Non-Compliant Algorithms Verified Absent:
+  [+] No 3DES, DES, or NULL encryption
+  [+] No MD5 or SHA-1 hashing
+  [+] No DH Groups 1, 2, or 5
+  [+] No profiles without PFS
+
+============================================================
+AUDIT TRAIL
+============================================================
+
+Validation Tool: SCM FIPS 140-3 Compliance Validator v1.0
+Validation Date: 2025-12-15 10:00:15 UTC
+API Endpoint: api.strata.paloaltonetworks.com
+API Path: /sse/config/v1/
+Tenant Type: Prisma Access
+Validator: Automated API Check
+
+This report can be used as evidence of cryptographic compliance
+for security audits and regulatory requirements.

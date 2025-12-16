@@ -1,0 +1,214 @@
+============================================================
+FIPS 140-3 COMPLIANCE VALIDATION
+============================================================
+Firewall: fw-prod-01.example.com
+Date: 2025-12-15 09:00:00
+[INFO] Authenticating to firewall...
+[PASS] Successfully authenticated
+
+============================================================
+GATHERING PROFILE USAGE INFORMATION
+============================================================
+[INFO] Checking IKE gateway configurations...
+[INFO]   IKE Gateway 'datacenter-primary' uses profile: fips-ike-crypto-max
+[INFO]   IKE Gateway 'datacenter-backup' uses profile: fips-ike-crypto-max
+[INFO]   IKE Gateway 'branch-offices' uses profile: fips-ike-crypto-recommended
+[INFO] Checking IPSec tunnel configurations...
+[INFO]   IPSec Tunnel 'dc-tunnel-1' uses profile: fips-ipsec-crypto-max
+[INFO]   IPSec Tunnel 'dc-tunnel-2' uses profile: fips-ipsec-crypto-max
+[INFO]   IPSec Tunnel 'branch-tunnel-1' uses profile: fips-ipsec-crypto-recommended
+[INFO]   IPSec Tunnel 'branch-tunnel-2' uses profile: fips-ipsec-crypto-recommended
+[INFO] Checking GlobalProtect gateway configurations...
+[INFO]   GP Gateway 'gp-gateway' uses IPSec profile: fips-ipsec-crypto-gp
+[INFO]   GP Gateway 'gp-gateway' uses SSL/TLS profile: fips-ssl-tls-recommended
+[INFO] Checking GlobalProtect portal configurations...
+[INFO]   GP Portal 'gp-portal' uses SSL/TLS profile: fips-ssl-tls-recommended
+[INFO] Checking management interface configuration...
+[INFO]   Management interface uses SSL/TLS profile: fips-ssl-tls-max
+[INFO] Checking decryption rule configurations...
+[INFO]   Decryption rule 'outbound-ssl-inspect' uses profile: fips-decryption-profile
+[INFO] Checking interface configurations...
+[INFO]   Interface 'ethernet1/1' uses mgmt profile: fips-mgmt-profile
+[INFO]   Interface 'ethernet1/2' uses mgmt profile: fips-mgmt-profile
+[INFO]   Interface 'loopback.1' uses mgmt profile: fips-https-only
+
+[INFO] IKE crypto profiles in use: 2
+[INFO] IPSec crypto profiles in use: 3
+[INFO] SSL/TLS profiles in use: 2
+[INFO] Decryption profiles in use: 1
+[INFO] Management profiles in use: 2
+
+============================================================
+IKE CRYPTO PROFILES
+============================================================
+
+[INFO] Checking profile: fips-ike-crypto-max [IN USE]
+[PASS] Encryption algorithms compliant
+[PASS] Hash algorithms compliant
+[PASS] DH groups compliant
+
+[INFO] Checking profile: fips-ike-crypto-recommended [IN USE]
+[PASS] Encryption algorithms compliant
+[PASS] Hash algorithms compliant
+[PASS] DH groups compliant
+
+[INFO] Checking profile: fips-ike-crypto-compat [NOT USED]
+[PASS] Encryption algorithms compliant
+[PASS] Hash algorithms compliant
+[PASS] DH groups compliant
+
+============================================================
+IPSEC CRYPTO PROFILES
+============================================================
+
+[INFO] Checking profile: fips-ipsec-crypto-max [IN USE]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: fips-ipsec-crypto-recommended [IN USE]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: fips-ipsec-crypto-gp [IN USE]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group19
+
+[INFO] Checking profile: fips-ipsec-crypto-compat [NOT USED]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group14
+
+============================================================
+SSL/TLS SERVICE PROFILES
+============================================================
+
+[INFO] Checking profile: fips-ssl-tls-max [IN USE]
+[PASS] Minimum TLS version compliant: tls1-2
+[PASS] Certificate assigned: prod-mgmt-cert
+
+[INFO] Checking profile: fips-ssl-tls-recommended [IN USE]
+[PASS] Minimum TLS version compliant: tls1-2
+[PASS] Certificate assigned: prod-services-cert
+
+[INFO] Checking profile: fips-ssl-tls-1-3-only [NOT USED]
+[PASS] Minimum TLS version compliant: tls1-3
+[PASS] Certificate assigned: prod-mgmt-cert
+
+============================================================
+DECRYPTION PROFILES
+============================================================
+
+[INFO] Checking profile: fips-decryption-profile [IN USE]
+[PASS] Minimum TLS version compliant: tls1-2
+[PASS] Blocking expired certificates enabled
+[PASS] Blocking untrusted issuers enabled
+
+============================================================
+INTERFACE MANAGEMENT PROFILES
+============================================================
+
+[INFO] Checking profile: fips-mgmt-profile [IN USE]
+[PASS] Telnet is disabled
+[PASS] HTTP is disabled
+[PASS] Secure protocols: SSH=True, HTTPS=True
+
+[INFO] Checking profile: fips-https-only [IN USE]
+[PASS] Telnet is disabled
+[PASS] HTTP is disabled
+[PASS] Secure protocols: SSH=False, HTTPS=True
+
+============================================================
+CERTIFICATE VALIDATION
+============================================================
+
+[INFO] Checking certificate: enterprise-root-ca
+[PASS] Key algorithm: RSA
+[PASS] Certificate valid for 1825 days
+[INFO] Certificate type: CA
+
+[INFO] Checking certificate: prod-mgmt-cert
+[PASS] Key algorithm: RSA
+[PASS] Certificate valid for 365 days
+[INFO] Certificate type: End-entity
+
+[INFO] Checking certificate: prod-services-cert
+[PASS] Key algorithm: ECDSA
+[PASS] Certificate valid for 365 days
+[INFO] Certificate type: End-entity
+
+[INFO] Checking certificate: ssl-forward-trust-ca
+[PASS] Key algorithm: RSA
+[PASS] Certificate valid for 730 days
+[INFO] Certificate type: CA
+
+============================================================
+MANAGEMENT INTERFACE TLS
+============================================================
+[PASS] Management using SSL/TLS profile: fips-ssl-tls-max
+
+============================================================
+COMPLIANCE SUMMARY
+============================================================
+
+PASSED:      52
+FAILED:      0   (Non-compliant AND in use)
+HIGH RISK:   0   (Non-compliant but NOT in use)
+WARNINGS:    0
+
+==================================================
+  FIPS 140-3 COMPLIANCE: PASSED
+==================================================
+
+All cryptographic configurations are FIPS 140-3 compliant.
+No non-compliant profiles found in the configuration.
+
+Report generated: 2025-12-15 09:00:15
+Firewall: fw-prod-01.example.com
+
+============================================================
+COMPLIANCE ATTESTATION
+============================================================
+
+This firewall has been validated for FIPS 140-3 cryptographic
+compliance without requiring CC-mode.
+
+Validated Areas:
+  [✓] IKE Phase 1 (IKEv2) Cryptography
+  [✓] IPSec Phase 2 Cryptography
+  [✓] SSL/TLS Service Profiles
+  [✓] Decryption Profile Settings
+  [✓] Management Interface Security
+  [✓] Certificate Key Algorithms
+  [✓] Certificate Validity
+
+Compliant Algorithms in Use:
+  - Encryption: AES-256-GCM, AES-256-CBC, AES-128-GCM
+  - Hash: SHA-512, SHA-384, SHA-256
+  - Key Exchange: ECDH P-384 (Group 20), ECDH P-256 (Group 19), DH 4096-bit (Group 16)
+  - TLS: TLS 1.2, TLS 1.3
+  - RSA Key Size: 3072-bit minimum
+  - ECDSA Curves: P-256, P-384
+
+Non-Compliant Algorithms Verified Absent:
+  [✓] No 3DES, DES, or RC4 encryption
+  [✓] No MD5 or SHA-1 hashing
+  [✓] No DH Groups 1, 2, or 5
+  [✓] No TLS 1.0 or TLS 1.1
+  [✓] No Telnet or HTTP management access
+
+============================================================
+AUDIT TRAIL
+============================================================
+
+Validation Tool: FIPS 140-3 Compliance Validator v2.0
+Validation Date: 2025-12-15 09:00:15 UTC
+Firewall Model: PA-5220
+PAN-OS Version: 11.2.3
+Serial Number: 0123456789ABCDEF
+Validator: Automated API Check
+
+This report can be used as evidence of cryptographic compliance
+for security audits and regulatory requirements.

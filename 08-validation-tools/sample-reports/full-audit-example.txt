@@ -1,0 +1,326 @@
+============================================================
+FIPS 140-3 COMPLIANCE VALIDATION
+============================================================
+Firewall: 192.168.1.1
+Date: 2025-12-15 14:30:00
+[INFO] Authenticating to firewall...
+[PASS] Successfully authenticated
+
+============================================================
+GATHERING PROFILE USAGE INFORMATION
+============================================================
+[INFO] Checking IKE gateway configurations...
+[INFO]   IKE Gateway 'branch-office-vpn' uses profile: legacy-ike-profile
+[INFO]   IKE Gateway 'datacenter-vpn' uses profile: fips-ike-crypto-max
+[INFO]   IKE Gateway 'partner-vpn' uses profile: default
+[INFO] Checking IPSec tunnel configurations...
+[INFO]   IPSec Tunnel 'branch-tunnel-1' uses profile: legacy-ipsec-profile
+[INFO]   IPSec Tunnel 'dc-tunnel-primary' uses profile: fips-ipsec-crypto-recommended
+[INFO]   IPSec Tunnel 'dc-tunnel-backup' uses profile: fips-ipsec-crypto-recommended
+[INFO]   IPSec Tunnel 'partner-tunnel' uses profile: default
+[INFO] Checking GlobalProtect gateway configurations...
+[INFO]   GP Gateway 'gp-external' uses IPSec profile: gp-ipsec-profile
+[INFO]   GP Gateway 'gp-external' uses SSL/TLS profile: gp-ssl-profile
+[INFO] Checking GlobalProtect portal configurations...
+[INFO]   GP Portal 'gp-portal' uses SSL/TLS profile: gp-ssl-profile
+[INFO] Checking management interface configuration...
+[INFO]   Management interface uses SSL/TLS profile: mgmt-ssl-profile
+[INFO] Checking decryption rule configurations...
+[INFO]   Decryption rule 'decrypt-outbound' uses profile: ssl-decrypt-profile
+[INFO] Checking interface configurations...
+[INFO]   Interface 'ethernet1/1' uses mgmt profile: external-mgmt
+[INFO]   Interface 'ethernet1/2' uses mgmt profile: internal-mgmt
+[INFO]   Interface 'ethernet1/3' uses mgmt profile: dmz-mgmt
+
+[INFO] IKE crypto profiles in use: 3
+[INFO] IPSec crypto profiles in use: 4
+[INFO] SSL/TLS profiles in use: 2
+[INFO] Decryption profiles in use: 1
+[INFO] Management profiles in use: 3
+
+============================================================
+IKE CRYPTO PROFILES
+============================================================
+
+[INFO] Checking profile: default [IN USE]
+[FAIL] Non-compliant encryption: 3des
+[FAIL] Non-compliant encryption: des
+[FAIL] Non-compliant hash: sha1
+[FAIL] Non-compliant hash: md5
+[FAIL] Non-compliant DH group: group2
+[FAIL] Non-compliant DH group: group1
+
+[INFO] Checking profile: legacy-ike-profile [IN USE]
+[FAIL] Non-compliant encryption: 3des
+[PASS] Hash algorithms compliant
+[FAIL] Non-compliant DH group: group5
+
+[INFO] Checking profile: fips-ike-crypto-max [IN USE]
+[PASS] Encryption algorithms compliant
+[PASS] Hash algorithms compliant
+[PASS] DH groups compliant
+
+[INFO] Checking profile: fips-ike-crypto-recommended [NOT USED]
+[PASS] Encryption algorithms compliant
+[PASS] Hash algorithms compliant
+[PASS] DH groups compliant
+
+[INFO] Checking profile: old-vendor-profile [NOT USED]
+[HIGH RISK] Non-compliant encryption (not in use): 3des
+[HIGH RISK] Non-compliant hash (not in use): sha1
+[HIGH RISK] Non-compliant DH group (not in use): group2
+
+[INFO] Checking profile: test-profile [NOT USED]
+[HIGH RISK] Non-compliant encryption (not in use): des
+[HIGH RISK] Non-compliant hash (not in use): md5
+[HIGH RISK] Non-compliant DH group (not in use): group1
+
+============================================================
+IPSEC CRYPTO PROFILES
+============================================================
+
+[INFO] Checking profile: default [IN USE]
+[FAIL] Non-compliant ESP encryption: 3des
+[FAIL] Non-compliant ESP authentication: sha1
+[FAIL] Non-compliant DH group (PFS): group2
+
+[INFO] Checking profile: legacy-ipsec-profile [IN USE]
+[FAIL] Non-compliant ESP encryption: 3des
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group14
+
+[INFO] Checking profile: fips-ipsec-crypto-recommended [IN USE]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: gp-ipsec-profile [IN USE]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group19
+
+[INFO] Checking profile: Suite-B-GCM-128 [NOT USED]
+[PASS] ESP encryption compliant
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group19
+
+[INFO] Checking profile: weak-ipsec-backup [NOT USED]
+[HIGH RISK] Non-compliant ESP encryption (not in use): 3des
+[HIGH RISK] Non-compliant ESP authentication (not in use): sha1
+[HIGH RISK] Non-compliant DH group (PFS) (not in use): group5
+
+[INFO] Checking profile: null-encryption-test [NOT USED]
+[HIGH RISK] Non-compliant ESP encryption (not in use): null
+[PASS] ESP authentication compliant
+[PASS] DH group (PFS) compliant: group14
+
+============================================================
+SSL/TLS SERVICE PROFILES
+============================================================
+
+[INFO] Checking profile: mgmt-ssl-profile [IN USE]
+[FAIL] Non-compliant minimum TLS version: tls1-0
+[PASS] Certificate assigned: mgmt-cert
+
+[INFO] Checking profile: gp-ssl-profile [IN USE]
+[PASS] Minimum TLS version compliant: tls1-2
+[PASS] Certificate assigned: gp-wildcard-cert
+
+[INFO] Checking profile: fips-ssl-tls-max [NOT USED]
+[PASS] Minimum TLS version compliant: tls1-2
+[PASS] Certificate assigned: fips-mgmt-cert
+
+[INFO] Checking profile: legacy-ssl-profile [NOT USED]
+[HIGH RISK] Non-compliant minimum TLS version (not in use): tls1-1
+[PASS] Certificate assigned: old-cert
+
+[INFO] Checking profile: insecure-ssl-test [NOT USED]
+[HIGH RISK] Non-compliant minimum TLS version (not in use): tls1-0
+[WARN] No certificate assigned to profile
+
+============================================================
+DECRYPTION PROFILES
+============================================================
+
+[INFO] Checking profile: ssl-decrypt-profile [IN USE]
+[PASS] Minimum TLS version compliant: tls1-2
+[PASS] Blocking expired certificates enabled
+[PASS] Blocking untrusted issuers enabled
+
+[INFO] Checking profile: permissive-decrypt [NOT USED]
+[HIGH RISK] Non-compliant minimum TLS version (not in use): tls1-0
+[WARN] Blocking expired certificates not enabled
+[WARN] Blocking untrusted issuers not enabled
+
+[INFO] Checking profile: fips-decryption-profile [NOT USED]
+[PASS] Minimum TLS version compliant: tls1-2
+[PASS] Blocking expired certificates enabled
+[PASS] Blocking untrusted issuers enabled
+
+============================================================
+INTERFACE MANAGEMENT PROFILES
+============================================================
+
+[INFO] Checking profile: external-mgmt [IN USE]
+[PASS] Telnet is disabled
+[PASS] HTTP is disabled
+[PASS] Secure protocols: SSH=True, HTTPS=True
+
+[INFO] Checking profile: internal-mgmt [IN USE]
+[PASS] Telnet is disabled
+[FAIL] HTTP is enabled (insecure, non-encrypted)
+[PASS] Secure protocols: SSH=True, HTTPS=True
+
+[INFO] Checking profile: dmz-mgmt [IN USE]
+[FAIL] Telnet is enabled (insecure, non-encrypted)
+[FAIL] HTTP is enabled (insecure, non-encrypted)
+[PASS] Secure protocols: SSH=True, HTTPS=True
+
+[INFO] Checking profile: legacy-mgmt [NOT USED]
+[HIGH RISK] Telnet is enabled (not in use)
+[HIGH RISK] HTTP is enabled (not in use)
+[PASS] Secure protocols: SSH=True, HTTPS=True
+
+[INFO] Checking profile: fips-mgmt-profile [NOT USED]
+[PASS] Telnet is disabled
+[PASS] HTTP is disabled
+[PASS] Secure protocols: SSH=True, HTTPS=True
+
+[INFO] Checking profile: minimal-mgmt [NOT USED]
+[PASS] Telnet is disabled
+[PASS] HTTP is disabled
+[WARN] No secure management protocols enabled
+
+============================================================
+CERTIFICATE VALIDATION
+============================================================
+
+[INFO] Checking certificate: mgmt-cert
+[PASS] Key algorithm: RSA
+[FAIL] Certificate is EXPIRED
+
+[INFO] Checking certificate: gp-wildcard-cert
+[PASS] Key algorithm: RSA
+[WARN] Certificate expires in 15 days
+
+[INFO] Checking certificate: fips-root-ca
+[PASS] Key algorithm: RSA
+[PASS] Certificate valid for 3649 days
+[INFO] Certificate type: CA
+
+[INFO] Checking certificate: fips-mgmt-cert
+[PASS] Key algorithm: RSA
+[PASS] Certificate valid for 364 days
+[INFO] Certificate type: End-entity
+
+[INFO] Checking certificate: old-cert
+[PASS] Key algorithm: RSA
+[WARN] Certificate expires in 25 days
+[INFO] Certificate type: End-entity
+
+[INFO] Checking certificate: partner-cert
+[PASS] Key algorithm: ECDSA
+[PASS] Certificate valid for 180 days
+[INFO] Certificate type: End-entity
+
+============================================================
+MANAGEMENT INTERFACE TLS
+============================================================
+[PASS] Management using SSL/TLS profile: mgmt-ssl-profile
+
+============================================================
+COMPLIANCE SUMMARY
+============================================================
+
+PASSED:      48
+FAILED:      19  (Non-compliant AND in use)
+HIGH RISK:   14  (Non-compliant but NOT in use)
+WARNINGS:    6
+
+==================================================
+  FIPS 140-3 COMPLIANCE: FAILED
+==================================================
+
+19 non-compliant configuration(s) actively in use.
+Review the [FAIL] items above and remediate immediately.
+
+Additionally, 14 unused non-compliant profile(s)
+should be removed or updated.
+
+Report generated: 2025-12-15 14:30:45
+Firewall: 192.168.1.1
+
+============================================================
+DETAILED FINDINGS BREAKDOWN
+============================================================
+
+CRITICAL - Non-Compliant Settings IN USE (Immediate Action Required):
+------------------------------------------------------------------------
+1. IKE Profile 'default' - Used by: partner-vpn gateway
+   - 3des, des encryption
+   - sha1, md5 hash
+   - group1, group2 DH
+
+2. IKE Profile 'legacy-ike-profile' - Used by: branch-office-vpn gateway
+   - 3des encryption
+   - group5 DH
+
+3. IPSec Profile 'default' - Used by: partner-tunnel
+   - 3des encryption
+   - sha1 authentication
+   - group2 PFS
+
+4. IPSec Profile 'legacy-ipsec-profile' - Used by: branch-tunnel-1
+   - 3des encryption
+
+5. SSL/TLS Profile 'mgmt-ssl-profile' - Used by: Management Interface
+   - TLS 1.0 minimum version
+
+6. Interface Mgmt Profile 'internal-mgmt' - Used by: ethernet1/2
+   - HTTP enabled
+
+7. Interface Mgmt Profile 'dmz-mgmt' - Used by: ethernet1/3
+   - Telnet enabled
+   - HTTP enabled
+
+8. Certificate 'mgmt-cert' - Used by: mgmt-ssl-profile
+   - EXPIRED
+
+HIGH RISK - Non-Compliant Settings NOT in Use (Cleanup Recommended):
+------------------------------------------------------------------------
+1. IKE Profile 'old-vendor-profile' - 3des, sha1, group2
+2. IKE Profile 'test-profile' - des, md5, group1
+3. IPSec Profile 'weak-ipsec-backup' - 3des, sha1, group5
+4. IPSec Profile 'null-encryption-test' - null encryption
+5. SSL/TLS Profile 'legacy-ssl-profile' - TLS 1.1
+6. SSL/TLS Profile 'insecure-ssl-test' - TLS 1.0
+7. Decryption Profile 'permissive-decrypt' - TLS 1.0
+8. Interface Mgmt Profile 'legacy-mgmt' - telnet, http enabled
+
+WARNINGS (Review Recommended):
+------------------------------------------------------------------------
+1. Certificate 'gp-wildcard-cert' expires in 15 days
+2. Certificate 'old-cert' expires in 25 days
+3. SSL/TLS Profile 'insecure-ssl-test' has no certificate assigned
+4. Decryption Profile 'permissive-decrypt' - not blocking expired certs
+5. Decryption Profile 'permissive-decrypt' - not blocking untrusted issuers
+6. Interface Mgmt Profile 'minimal-mgmt' - no secure protocols enabled
+
+============================================================
+REMEDIATION PRIORITY
+============================================================
+
+PRIORITY 1 - Fix Immediately (Security Risk):
+  - Replace 'default' IKE/IPSec profiles on partner-vpn/partner-tunnel
+  - Update 'legacy-ike-profile' and 'legacy-ipsec-profile' on branch VPN
+  - Update 'mgmt-ssl-profile' to TLS 1.2 minimum
+  - Renew expired 'mgmt-cert' certificate
+  - Disable telnet/HTTP on 'dmz-mgmt' and 'internal-mgmt' profiles
+
+PRIORITY 2 - Fix Soon (Certificate Expiration):
+  - Renew 'gp-wildcard-cert' (expires in 15 days)
+  - Renew 'old-cert' (expires in 25 days)
+
+PRIORITY 3 - Cleanup (Configuration Hygiene):
+  - Delete or update unused non-compliant profiles
+  - Remove test profiles with weak algorithms

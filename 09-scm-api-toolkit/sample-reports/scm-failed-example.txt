@@ -1,0 +1,320 @@
+============================================================
+FIPS 140-3 COMPLIANCE VALIDATION - STRATA CLOUD MANAGER
+============================================================
+Tenant: TSG 1111111111
+Folder: Prisma Access
+Date: 2025-12-15 16:00:00
+[INFO] Authenticating to SCM API...
+[PASS] Successfully authenticated
+
+============================================================
+GATHERING PROFILE USAGE INFORMATION
+============================================================
+[INFO] Checking remote network configurations...
+[INFO]   Remote Network 'legacy-datacenter' uses IKE profile: PaloAlto-Networks-IKE-Crypto
+[INFO]   Remote Network 'legacy-datacenter' uses IPSec profile: PaloAlto-Networks-IPSec-Crypto
+[INFO]   Remote Network 'vendor-connection' uses IKE profile: CiscoASA-IKE-Crypto-Default
+[INFO]   Remote Network 'vendor-connection' uses IPSec profile: CiscoASA-IPSec-Crypto-Default
+[INFO]   Remote Network 'new-branch' uses IKE profile: fips-ike-crypto-recommended
+[INFO]   Remote Network 'new-branch' uses IPSec profile: fips-ipsec-crypto-recommended
+[INFO] Checking service connection configurations...
+[INFO]   Service Connection 'aws-transit' uses IKE profile: Viptela-IKE-default
+[INFO]   Service Connection 'aws-transit' uses IPSec profile: Viptela-IPSec-default
+
+[INFO] IKE crypto profiles in use: 4
+[INFO] IPSec crypto profiles in use: 4
+
+============================================================
+IKE CRYPTO PROFILES
+============================================================
+
+[INFO] Checking profile: PaloAlto-Networks-IKE-Crypto [IN USE]
+[FAIL] Non-compliant encryption: 3des
+[PASS] Hash algorithms compliant: sha256
+[FAIL] Non-compliant DH group: group2
+       Used by: legacy-datacenter
+
+[INFO] Checking profile: CiscoASA-IKE-Crypto-Default [IN USE]
+[FAIL] Non-compliant encryption: 3des
+[FAIL] Non-compliant hash: sha1, md5
+[FAIL] Non-compliant DH group: group5, group2, group1
+       Used by: vendor-connection
+
+[INFO] Checking profile: Viptela-IKE-default [IN USE]
+[PASS] Encryption algorithms compliant: aes-128-cbc
+[FAIL] Non-compliant hash: sha1
+[FAIL] Non-compliant DH group: group2
+       Used by: aws-transit
+
+[INFO] Checking profile: fips-ike-crypto-recommended [IN USE]
+[PASS] Encryption algorithms compliant: aes-256-cbc, aes-128-gcm
+[PASS] Hash algorithms compliant: sha384, sha256
+[PASS] DH groups compliant: group20, group19
+       Used by: new-branch
+
+[INFO] Checking profile: fips-ike-crypto-max [NOT USED]
+[PASS] Encryption algorithms compliant: aes-256-gcm
+[PASS] Hash algorithms compliant: sha512
+[PASS] DH groups compliant: group20
+
+[INFO] Checking profile: fips-ike-crypto-compat [NOT USED]
+[PASS] Encryption algorithms compliant: aes-256-cbc, aes-256-gcm, aes-128-cbc, aes-128-gcm
+[PASS] Hash algorithms compliant: sha512, sha384, sha256
+[PASS] DH groups compliant: group20, group19, group16, group14
+
+[INFO] Checking profile: Suite-B-GCM-256 [NOT USED]
+[PASS] Encryption algorithms compliant: aes-256-cbc
+[PASS] Hash algorithms compliant: sha384
+[PASS] DH groups compliant: group20
+
+[INFO] Checking profile: CloudGenix-IKE-Crypto-Default [NOT USED]
+[PASS] Encryption algorithms compliant: aes-256-cbc
+[PASS] Hash algorithms compliant: sha512
+[HIGH RISK] Non-compliant DH group (not in use): group5
+
+[INFO] Checking profile: Riverbed-IKE-Crypto-Default [NOT USED]
+[PASS] Encryption algorithms compliant: aes-256-cbc
+[PASS] Hash algorithms compliant: sha512
+[HIGH RISK] Non-compliant DH group (not in use): group2
+
+[INFO] Checking profile: Velocloud-IKE-default [NOT USED]
+[PASS] Encryption algorithms compliant: aes-128-cbc
+[HIGH RISK] Non-compliant hash (not in use): sha1
+[HIGH RISK] Non-compliant DH group (not in use): group5
+
+[INFO] Checking profile: Others-IKE-Crypto-Default [NOT USED]
+[HIGH RISK] Non-compliant encryption (not in use): 3des
+[HIGH RISK] Non-compliant hash (not in use): sha1, md5
+[HIGH RISK] Non-compliant DH group (not in use): group5, group2, group1
+
+============================================================
+IPSEC CRYPTO PROFILES
+============================================================
+
+[INFO] Checking profile: PaloAlto-Networks-IPSec-Crypto [IN USE]
+[FAIL] Non-compliant ESP encryption: 3des
+[PASS] ESP authentication compliant: sha256
+[FAIL] Non-compliant DH group (PFS): group2
+       Used by: legacy-datacenter
+
+[INFO] Checking profile: CiscoASA-IPSec-Crypto-Default [IN USE]
+[FAIL] Non-compliant ESP encryption: 3des
+[FAIL] Non-compliant ESP authentication: sha1, md5
+[FAIL] Non-compliant DH group (PFS): group2
+       Used by: vendor-connection
+
+[INFO] Checking profile: Viptela-IPSec-default [IN USE]
+[PASS] ESP encryption compliant: aes-256-cbc
+[PASS] ESP authentication compliant: sha256
+[FAIL] Non-compliant DH group (PFS): group2
+       Used by: aws-transit
+
+[INFO] Checking profile: fips-ipsec-crypto-recommended [IN USE]
+[PASS] ESP encryption compliant: aes-256-gcm, aes-128-gcm
+[PASS] ESP authentication compliant: sha384, sha256
+[PASS] DH group (PFS) compliant: group20
+       Used by: new-branch
+
+[INFO] Checking profile: fips-ipsec-crypto-max [NOT USED]
+[PASS] ESP encryption compliant: aes-256-gcm
+[PASS] ESP authentication compliant: sha512
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: fips-ipsec-crypto-compat [NOT USED]
+[PASS] ESP encryption compliant: aes-256-gcm, aes-256-cbc, aes-128-gcm, aes-128-cbc
+[PASS] ESP authentication compliant: sha512, sha384, sha256
+[PASS] DH group (PFS) compliant: group14
+
+[INFO] Checking profile: Suite-B-GCM-256 [NOT USED]
+[PASS] ESP encryption compliant: aes-256-gcm
+[PASS] ESP authentication compliant: none (GCM mode)
+[PASS] DH group (PFS) compliant: group20
+
+[INFO] Checking profile: Citrix-IPSec-Crypto-Default [NOT USED]
+[PASS] ESP encryption compliant: aes-256-cbc
+[PASS] ESP authentication compliant: sha256
+[HIGH RISK] Non-compliant DH group (PFS) (not in use): group2
+
+[INFO] Checking profile: CiscoISR-IPSec-Crypto-Default [NOT USED]
+[PASS] ESP encryption compliant: aes-128-cbc
+[PASS] ESP authentication compliant: sha256
+[HIGH RISK] Non-compliant DH group (PFS) (not in use): group5
+
+[INFO] Checking profile: Others-IPSec-Crypto-Default [NOT USED]
+[HIGH RISK] Non-compliant ESP encryption (not in use): 3des
+[HIGH RISK] Non-compliant ESP authentication (not in use): sha1, md5
+[HIGH RISK] Non-compliant DH group (PFS) (not in use): group2
+
+============================================================
+COMPLIANCE SUMMARY
+============================================================
+
+IKE CRYPTO PROFILES:
+  Total:      11
+  In Use:     4 (1 compliant, 3 FAILED)
+  Not Used:   7 (3 compliant, 4 HIGH RISK)
+
+IPSEC CRYPTO PROFILES:
+  Total:      10
+  In Use:     4 (1 compliant, 3 FAILED)
+  Not Used:   6 (3 compliant, 3 HIGH RISK)
+
+OVERALL:
+  PASSED:     30 checks
+  FAILED:     14 checks (actively in use)
+  HIGH RISK:  11 checks (not in use)
+
+==================================================
+  FIPS 140-3 COMPLIANCE: FAILED
+==================================================
+
+6 non-compliant profiles are actively in use.
+Review the [FAIL] items above and remediate immediately.
+
+Additionally, 7 unused non-compliant profiles should be
+removed or updated.
+
+Report generated: 2025-12-15 16:00:30
+Tenant: TSG 1111111111
+
+============================================================
+CRITICAL - Non-Compliant Settings IN USE
+============================================================
+
+Immediate action required for these configurations:
+
+1. Remote Network 'legacy-datacenter'
+   IKE Profile: PaloAlto-Networks-IKE-Crypto
+   - 3des encryption (prohibited)
+   - group2 DH (weak, 1024-bit)
+
+   IPSec Profile: PaloAlto-Networks-IPSec-Crypto
+   - 3des encryption (prohibited)
+   - group2 PFS (weak, 1024-bit)
+
+   IMPACT: All traffic to this remote network uses weak crypto
+   ACTION: Migrate to fips-ike-crypto-compat / fips-ipsec-crypto-compat
+
+2. Remote Network 'vendor-connection'
+   IKE Profile: CiscoASA-IKE-Crypto-Default
+   - 3des encryption (prohibited)
+   - sha1, md5 hash (prohibited)
+   - group1, group2, group5 DH (weak)
+
+   IPSec Profile: CiscoASA-IPSec-Crypto-Default
+   - 3des encryption (prohibited)
+   - sha1, md5 auth (prohibited)
+   - group2 PFS (weak)
+
+   IMPACT: Highest risk - multiple weak algorithms in use
+   ACTION: Coordinate with vendor to upgrade to compliant profile
+
+3. Service Connection 'aws-transit'
+   IKE Profile: Viptela-IKE-default
+   - sha1 hash (prohibited)
+   - group2 DH (weak)
+
+   IPSec Profile: Viptela-IPSec-default
+   - group2 PFS (weak)
+
+   IMPACT: Service connection uses weak key exchange
+   ACTION: Update AWS VPN configuration and migrate profile
+
+============================================================
+HIGH RISK - Non-Compliant Settings NOT in Use
+============================================================
+
+These profiles should be cleaned up to prevent accidental use:
+
+IKE Profiles:
+  - CloudGenix-IKE-Crypto-Default (group5)
+  - Riverbed-IKE-Crypto-Default (group2)
+  - Velocloud-IKE-default (sha1, group5)
+  - Others-IKE-Crypto-Default (3des, sha1, md5, group1/2/5)
+
+IPSec Profiles:
+  - Citrix-IPSec-Crypto-Default (group2)
+  - CiscoISR-IPSec-Crypto-Default (group5)
+  - Others-IPSec-Crypto-Default (3des, sha1, md5, group2)
+
+============================================================
+REMEDIATION PRIORITY
+============================================================
+
+PRIORITY 1 - Fix Immediately (In Use, Critical Risk):
+  1. legacy-datacenter - Replace PaloAlto-Networks-* profiles
+  2. vendor-connection - Coordinate vendor upgrade
+  3. aws-transit - Update Viptela-* profiles
+
+PRIORITY 2 - Fix Soon (In Use, High Risk):
+  (All in-use non-compliant profiles are critical)
+
+PRIORITY 3 - Cleanup (Not in Use):
+  - Delete or update unused non-compliant profiles
+  - Document approved profile list
+
+============================================================
+MIGRATION RECOMMENDATIONS
+============================================================
+
+For 'legacy-datacenter':
+  Current:  PaloAlto-Networks-IKE-Crypto
+  Replace:  fips-ike-crypto-compat
+
+  Current:  PaloAlto-Networks-IPSec-Crypto
+  Replace:  fips-ipsec-crypto-compat
+
+  Notes: compat profiles support widest range of compliant algorithms
+
+For 'vendor-connection':
+  Current:  CiscoASA-IKE-Crypto-Default
+  Replace:  fips-ike-crypto-compat
+
+  Current:  CiscoASA-IPSec-Crypto-Default
+  Replace:  fips-ipsec-crypto-compat
+
+  Notes: Requires vendor coordination - ensure peer supports AES/SHA-256+
+
+For 'aws-transit':
+  Current:  Viptela-IKE-default
+  Replace:  fips-ike-crypto-recommended
+
+  Current:  Viptela-IPSec-default
+  Replace:  fips-ipsec-crypto-recommended
+
+  Notes: AWS VPN supports AES-256-GCM and SHA-384
+
+============================================================
+AVAILABLE FIPS-COMPLIANT PROFILES
+============================================================
+
+Ready for immediate use:
+
+IKE Crypto Profiles:
+  - fips-ike-crypto-max (AES-256-GCM, SHA-512, Group 20)
+  - fips-ike-crypto-recommended (AES-256/128, SHA-384/256, Group 20/19)
+  - fips-ike-crypto-compat (Multiple AES, Multiple SHA-2, Group 14-20)
+  - Suite-B-GCM-256 (Suite B compliant)
+
+IPSec Crypto Profiles:
+  - fips-ipsec-crypto-max (AES-256-GCM, SHA-512, PFS Group 20)
+  - fips-ipsec-crypto-recommended (AES-256/128-GCM, SHA-384/256, PFS Group 20)
+  - fips-ipsec-crypto-compat (Multiple AES, Multiple SHA-2, PFS Group 14)
+  - Suite-B-GCM-256 (Suite B compliant)
+
+============================================================
+AUDIT TRAIL
+============================================================
+
+Validation Tool: SCM FIPS 140-3 Compliance Validator v1.0
+Validation Date: 2025-12-15 16:00:30 UTC
+API Endpoint: api.strata.paloaltonetworks.com
+API Path: /sse/config/v1/
+Tenant Type: Prisma Access
+Validator: Automated API Check
+
+COMPLIANCE STATUS: FAILED
+IMMEDIATE ACTION REQUIRED
+
+This report documents non-compliant cryptographic configurations
+that must be remediated for regulatory compliance.
