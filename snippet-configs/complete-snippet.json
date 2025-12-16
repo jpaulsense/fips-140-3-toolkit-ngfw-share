@@ -1,0 +1,102 @@
+{
+  "snippet": {
+    "name": "FIPS-140-3-Crypto-Profiles",
+    "description": "FIPS 140-3 compliant IKE and IPSec crypto profiles for VPN configurations. Includes max, recommended, and compat tiers for different security requirements.",
+    "labels": ["fips", "compliance", "security", "crypto"],
+    "version": "1.0"
+  },
+  "configuration": {
+    "network": {
+      "ike_crypto_profiles": [
+        {
+          "name": "fips-ike-crypto-max",
+          "description": "Maximum security - AES-256-GCM, SHA-512, ECDH P-384",
+          "encryption": ["aes-256-gcm"],
+          "authentication": ["sha512"],
+          "dh_group": ["group20"],
+          "lifetime": {
+            "hours": 8
+          }
+        },
+        {
+          "name": "fips-ike-crypto-recommended",
+          "description": "Recommended for production - Balanced security and compatibility",
+          "encryption": ["aes-256-cbc", "aes-128-gcm"],
+          "authentication": ["sha384", "sha256"],
+          "dh_group": ["group20", "group19"],
+          "lifetime": {
+            "hours": 8
+          }
+        },
+        {
+          "name": "fips-ike-crypto-compat",
+          "description": "Maximum compatibility - For legacy device interoperability",
+          "encryption": ["aes-256-cbc", "aes-256-gcm", "aes-128-cbc", "aes-128-gcm"],
+          "authentication": ["sha512", "sha384", "sha256"],
+          "dh_group": ["group20", "group19", "group16", "group14"],
+          "lifetime": {
+            "hours": 8
+          }
+        }
+      ],
+      "ipsec_crypto_profiles": [
+        {
+          "name": "fips-ipsec-crypto-max",
+          "description": "Maximum security - AES-256-GCM, SHA-512, PFS Group 20",
+          "esp": {
+            "encryption": ["aes-256-gcm"],
+            "authentication": ["sha512"]
+          },
+          "dh_group": "group20",
+          "lifetime": {
+            "hours": 1
+          },
+          "lifesize": {
+            "gb": 100
+          }
+        },
+        {
+          "name": "fips-ipsec-crypto-recommended",
+          "description": "Recommended for production - GCM modes with strong PFS",
+          "esp": {
+            "encryption": ["aes-256-gcm", "aes-128-gcm"],
+            "authentication": ["sha384", "sha256"]
+          },
+          "dh_group": "group20",
+          "lifetime": {
+            "hours": 1
+          }
+        },
+        {
+          "name": "fips-ipsec-crypto-compat",
+          "description": "Maximum compatibility - CBC and GCM modes",
+          "esp": {
+            "encryption": ["aes-256-gcm", "aes-256-cbc", "aes-128-gcm", "aes-128-cbc"],
+            "authentication": ["sha512", "sha384", "sha256"]
+          },
+          "dh_group": "group14",
+          "lifetime": {
+            "hours": 1
+          }
+        }
+      ]
+    }
+  },
+  "compliance": {
+    "standard": "FIPS 140-3",
+    "algorithms": {
+      "encryption": {
+        "approved": ["aes-128-cbc", "aes-128-gcm", "aes-256-cbc", "aes-256-gcm"],
+        "prohibited": ["3des", "des", "null", "rc4"]
+      },
+      "hash": {
+        "approved": ["sha256", "sha384", "sha512"],
+        "prohibited": ["md5", "sha1"]
+      },
+      "dh_groups": {
+        "approved": ["group14", "group15", "group16", "group19", "group20", "group21"],
+        "prohibited": ["group1", "group2", "group5"]
+      }
+    }
+  }
+}

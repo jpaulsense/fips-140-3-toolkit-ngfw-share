@@ -1,0 +1,43 @@
+{
+  "ipsec_crypto_profiles": [
+    {
+      "name": "fips-ipsec-crypto-max",
+      "description": "Maximum security FIPS 140-3 compliant IPSec profile",
+      "esp": {
+        "encryption": ["aes-256-gcm"],
+        "authentication": ["sha512"]
+      },
+      "dh_group": "group20",
+      "lifetime": {
+        "hours": 1
+      },
+      "lifesize": {
+        "gb": 100
+      }
+    },
+    {
+      "name": "fips-ipsec-crypto-recommended",
+      "description": "Recommended FIPS 140-3 compliant IPSec profile for production",
+      "esp": {
+        "encryption": ["aes-256-gcm", "aes-128-gcm"],
+        "authentication": ["sha384", "sha256"]
+      },
+      "dh_group": "group20",
+      "lifetime": {
+        "hours": 1
+      }
+    },
+    {
+      "name": "fips-ipsec-crypto-compat",
+      "description": "Compatible FIPS 140-3 compliant IPSec profile for legacy interoperability",
+      "esp": {
+        "encryption": ["aes-256-gcm", "aes-256-cbc", "aes-128-gcm", "aes-128-cbc"],
+        "authentication": ["sha512", "sha384", "sha256"]
+      },
+      "dh_group": "group14",
+      "lifetime": {
+        "hours": 1
+      }
+    }
+  ]
+}
