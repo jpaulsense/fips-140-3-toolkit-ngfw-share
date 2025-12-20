@@ -2,12 +2,37 @@
 
 A comprehensive toolkit for achieving FIPS 140-3 cryptographic compliance on Palo Alto Networks firewalls and Strata Cloud Manager (SCM) tenants **without requiring CC/FIPS-CC mode**.
 
+> **DISCLAIMER**: This is an independent, open-source tool and is **NOT affiliated with, endorsed by, or supported by Palo Alto Networks, Inc.**
+>
+> **USE AT YOUR OWN RISK.** This software is provided "AS IS" without warranty of any kind. The authors assume no liability for any damages arising from the use of this tool. Always validate configurations in a test environment before deploying to production systems.
+>
+> By using this tool, you acknowledge that you understand and accept these terms.
+
+## Quick Start (New Users)
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/yourusername/fips-140-3-toolkit.git
+cd fips-140-3-toolkit
+
+# 2. Install dependencies
+pip install requests
+
+# 3. Run the interactive toolkit
+python3 fips-toolkit.py
+```
+
+The interactive wizard will guide you through:
+- Configuring credentials (SCM and/or firewall)
+- Understanding FIPS 140-3 requirements
+- Running your first compliance audit
+
 ## Overview
 
 This toolkit enables organizations to:
 
+- **Audit** existing configurations for FIPS 140-3 compliance
 - **Configure** FIPS 140-3 compliant cryptographic settings on PAN-OS firewalls
-- **Validate** existing configurations against FIPS 140-3 requirements
 - **Deploy** pre-configured compliant profiles via SCM API
 - **Generate** compliance reports for audit purposes
 - **Automate** compliance checking in CI/CD pipelines
@@ -23,14 +48,58 @@ This toolkit provides an alternative approach: **configure only FIPS-compliant c
 
 ## Table of Contents
 
+- [Quick Start](#quick-start-new-users)
+- [Main Toolkit Commands](#main-toolkit-commands)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Toolkit Contents](#toolkit-contents)
 - [FIPS 140-3 Requirements](#fips-140-3-requirements)
-- [Usage Examples](#usage-examples)
+- [Toolkit Contents](#toolkit-contents)
+- [Advanced Usage](#advanced-usage)
 - [SCM API Integration](#scm-api-integration)
 - [Troubleshooting](#troubleshooting)
+
+## Main Toolkit Commands
+
+The main entry point is `fips-toolkit.py`. Run it interactively or use direct commands:
+
+```bash
+# Interactive mode (recommended for first-time users)
+python3 fips-toolkit.py
+
+# Direct commands
+python3 fips-toolkit.py audit       # Run compliance audit
+python3 fips-toolkit.py configure   # Deploy FIPS profiles
+python3 fips-toolkit.py report      # Generate compliance report
+python3 fips-toolkit.py setup       # Reconfigure credentials
+python3 fips-toolkit.py clear       # Clear saved credentials
+python3 fips-toolkit.py help        # Show help
+```
+
+### Modes
+
+| Mode | Description |
+|------|-------------|
+| **Audit** | Scan existing IKE, IPSec, TLS, and management profiles for FIPS compliance |
+| **Configure** | Deploy pre-built FIPS-compliant profiles (max, recommended, or compat tiers) |
+| **Report** | Generate compliance reports for auditors |
+| **Setup** | Configure SCM and/or firewall credentials |
+
+### Configuration Storage
+
+Credentials are stored locally at `~/.fips-toolkit/config.json` with restricted permissions (600). The toolkit never transmits credentials except to authenticate with the configured API endpoints.
+
+### SCM Credential Setup
+
+**New to SCM API?** See our detailed guide: **[docs/SCM-CREDENTIAL-SETUP.md](docs/SCM-CREDENTIAL-SETUP.md)**
+
+Quick role recommendations (Principle of Least Privilege):
+
+| Use Case | Recommended Role | Access Level |
+|----------|------------------|--------------|
+| Audit only (validate compliance) | **Auditor** | Read-only |
+| Deploy FIPS profiles | **Security Administrator** | Read + Write |
+
+For step-by-step instructions including screenshots and troubleshooting, see the [full credential setup guide](docs/SCM-CREDENTIAL-SETUP.md).
 
 ## Prerequisites
 
@@ -90,55 +159,63 @@ curl --version
 pip list | grep requests
 ```
 
-## Quick Start
+## Advanced Usage
 
-### For NGFW (Firewall)
+### Direct Firewall Validation (No SCM)
 
-1. **Review compliant configurations:**
-   ```bash
-   cat 01-ipsec-ike/README.md
-   ```
+If you prefer to work directly with firewalls without the interactive tool:
 
-2. **Apply IKE crypto profile:**
-   - Use the CLI commands or XML configurations in `01-ipsec-ike/`
+```bash
+# Run the standalone validator
+python3 08-validation-tools/fips-compliance-validator.py \
+    -f <firewall_ip> \
+    -u <username> \
+    -p <password>
+```
 
-3. **Apply IPSec crypto profile:**
-   - Use configurations from `01-ipsec-ike/`
+### SCM with Environment Variables
 
-4. **Validate configuration:**
-   ```bash
-   ./08-validation-tools/scripts/validate-fips-compliance.sh <firewall-ip>
-   ```
+For CI/CD pipelines or scripted usage:
 
-### For SCM (Strata Cloud Manager)
+```bash
+# Set environment variables
+export SCM_CLIENT_ID="your-service-account@tenant.iam.panserviceaccount.com"
+export SCM_CLIENT_SECRET="your-client-secret-uuid"
+export SCM_TSG_ID="1234567890"
 
-1. **Set environment variables:**
-   ```bash
-   export SCM_CLIENT_ID="your-service-account@tenant.iam.panserviceaccount.com"
-   export SCM_CLIENT_SECRET="your-client-secret-uuid"
-   export SCM_TSG_ID="1234567890"
-   ```
+# Run audit
+python3 09-scm-api-toolkit/07-examples/validate-compliance.py
 
-2. **Test authentication:**
-   ```bash
-   ./09-scm-api-toolkit/01-authentication/scm-auth.sh test
-   ```
+# Deploy profiles
+python3 09-scm-api-toolkit/07-examples/deploy-fips-profiles.py
+```
 
-3. **Deploy FIPS profiles:**
-   ```bash
-   ./09-scm-api-toolkit/07-examples/deploy-fips-profiles.sh
-   ```
+### Manual Firewall Configuration
 
-4. **Validate compliance:**
-   ```bash
-   python3 09-scm-api-toolkit/07-examples/validate-compliance.py
-   ```
+For manual CLI configuration:
+
+```bash
+# Review compliant configurations
+cat 01-ipsec-ike/README.md
+
+# Apply via CLI (example)
+configure
+set network ike crypto-profiles ike-crypto-profiles fips-ike-crypto-max \
+    encryption aes-256-gcm \
+    hash sha512 \
+    dh-group group20 \
+    lifetime hours 8
+commit
+```
 
 ## Toolkit Contents
 
 ```
 .
+├── fips-toolkit.py              # MAIN ENTRY POINT - Interactive toolkit
 ├── README.md                    # This file
+├── docs/                        # Documentation
+│   └── SCM-CREDENTIAL-SETUP.md  # Detailed SCM credential & role guide
 ├── 00-overview/                 # FIPS 140-3 overview and concepts
 ├── 01-ipsec-ike/               # IKE and IPSec crypto profiles
 │   ├── README.md               # Configuration guide
@@ -370,4 +447,14 @@ MIT License - See LICENSE file for details.
 
 ## Disclaimer
 
-This toolkit is provided as-is for educational and operational purposes. Always validate configurations in a test environment before deploying to production. Consult with your security team and compliance officers for specific regulatory requirements.
+**This is an independent, open-source project and is NOT affiliated with, endorsed by, or supported by Palo Alto Networks, Inc.**
+
+This software is provided "AS IS" without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
+
+**USE AT YOUR OWN RISK.** Always:
+- Validate configurations in a test environment before deploying to production
+- Consult with your security team and compliance officers for specific regulatory requirements
+- Review all changes before pushing to production systems
+- Maintain backups before making configuration changes
+
+By using this tool, you acknowledge that you understand and accept these terms.
