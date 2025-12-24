@@ -31,7 +31,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 # Version
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 
 # Debug mode - set to True to see detailed API responses
 DEBUG = os.environ.get('FIPS_TOOLKIT_DEBUG', '').lower() in ('1', 'true', 'yes')
@@ -547,6 +547,92 @@ def confirm(prompt: str, default: bool = True) -> bool:
         if response in ['n', 'no']:
             return False
         print_error("Please enter 'y' or 'n'")
+
+
+def get_multi_choice(prompt: str, items: List[Dict[str, str]],
+                     show_select_all: bool = True) -> List[Dict[str, str]]:
+    """
+    Get multiple selections from user.
+
+    Args:
+        prompt: Header prompt to display
+        items: List of dicts with 'name' and 'type' keys
+        show_select_all: Whether to show 'Select All' option
+
+    Returns:
+        List of selected item dicts
+    """
+    if not items:
+        print_warning("No items to select")
+        return []
+
+    print(f"\n{Colors.CYAN}{prompt}{Colors.NC}")
+    print(f"{Colors.WHITE}Enter numbers separated by commas (e.g., 1,3,5) or ranges (e.g., 1-5){Colors.NC}")
+    if show_select_all:
+        print(f"{Colors.WHITE}Enter 'a' or 'all' to select all, 'q' to cancel{Colors.NC}")
+    print()
+
+    # Group items by type for display
+    current_type = None
+    item_index = 1
+    index_map = {}  # Maps display number to item
+
+    for item in items:
+        item_type = item.get('type', 'Unknown')
+        if item_type != current_type:
+            current_type = item_type
+            print(f"\n  {Colors.YELLOW}--- {current_type} ---{Colors.NC}")
+
+        print(f"  {Colors.CYAN}[{item_index:2d}]{Colors.NC} {item['name']}")
+        index_map[item_index] = item
+        item_index += 1
+
+    print()
+
+    while True:
+        try:
+            response = input(f"Select profiles to delete: ").strip().lower()
+
+            if not response or response == 'q':
+                return []
+
+            if response in ['a', 'all']:
+                return items.copy()
+
+            # Parse selection (supports: 1,2,3 or 1-5 or 1,3-5,7)
+            selected_indices = set()
+            parts = response.replace(' ', '').split(',')
+
+            for part in parts:
+                if '-' in part:
+                    # Range: 1-5
+                    try:
+                        start, end = part.split('-')
+                        for i in range(int(start), int(end) + 1):
+                            if 1 <= i <= len(items):
+                                selected_indices.add(i)
+                    except ValueError:
+                        continue
+                else:
+                    # Single number
+                    try:
+                        idx = int(part)
+                        if 1 <= idx <= len(items):
+                            selected_indices.add(idx)
+                    except ValueError:
+                        continue
+
+            if not selected_indices:
+                print_error("No valid selections. Please enter numbers from the list.")
+                continue
+
+            # Return selected items
+            selected = [index_map[i] for i in sorted(selected_indices)]
+            return selected
+
+        except KeyboardInterrupt:
+            print()
+            return []
 
 
 class ConfigManager:
@@ -4042,15 +4128,14 @@ class CleanupMode:
         print_section("FIPS Profile Cleanup")
 
         print(f"""
-{Colors.WHITE}Remove FIPS 140-3 profiles for re-testing.{Colors.NC}
+{Colors.WHITE}Remove cryptographic profiles from firewall or SCM.{Colors.NC}
 
-{Colors.YELLOW}This will delete profiles with the specified name prefix:{Colors.NC}
-  - IKE Crypto Profiles (3)
-  - IPSec Crypto Profiles (4)
-  - SSL/TLS Service Profiles (3)
-  - Interface Management Profiles (3)
+{Colors.CYAN}This tool will:{Colors.NC}
+  1. Connect to your firewall or SCM
+  2. List all existing crypto profiles (IKE, IPSec, TLS, Mgmt)
+  3. Let you select which profiles to delete
 
-{Colors.RED}WARNING: This operation cannot be undone!{Colors.NC}
+{Colors.RED}WARNING: Deletion cannot be undone!{Colors.NC}
 """)
 
         # Determine available cleanup targets
@@ -4160,40 +4245,11 @@ class CleanupMode:
         }
 
     def _cleanup_scm(self):
-        """Cleanup FIPS profiles from SCM."""
+        """Cleanup FIPS profiles from SCM with interactive selection."""
         creds = self.config.get_scm_credentials()
-
-        # Ask for profile prefix
-        print(f"""
-{Colors.CYAN}Profile Naming:{Colors.NC}
-Enter the profile name prefix used when profiles were created.
-""")
-        name_prefix = get_input("Profile name prefix", default=self.DEFAULT_PREFIX)
 
         # Ask for folder
         folder = get_input("SCM folder", default="Shared")
-
-        profiles = self._get_profile_names(name_prefix)
-        total_profiles = sum(len(p) for p in profiles.values())
-
-        # Show what will be deleted
-        print(f"""
-{Colors.CYAN}Profiles to be deleted from SCM ({total_profiles} total):{Colors.NC}
-  IKE:     {', '.join(profiles['ike'])}
-  IPSec:   {', '.join(profiles['ipsec'])}
-  SSL/TLS: {', '.join(profiles['ssl_tls'])}
-  Mgmt:    {', '.join(profiles['mgmt'])}
-
-{Colors.CYAN}Folder:{Colors.NC} {folder}
-""")
-
-        # Dry run first?
-        dry_run = confirm("Perform dry-run first (show what would be deleted)?", default=True)
-
-        if not dry_run:
-            if not confirm(f"{Colors.RED}Delete these profiles from SCM?{Colors.NC}", default=False):
-                print("Cleanup cancelled.")
-                return
 
         try:
             # Add SCM client path
@@ -4213,93 +4269,93 @@ Enter the profile name prefix used when profiles were created.
             )
             print_success("Connected to SCM")
 
-            # Track stats
-            deleted = 0
-            not_found = 0
-            errors = 0
+            # Query all existing profiles
+            print_info("Fetching existing profiles...")
+
+            all_profiles = []
+            mgmt_403_shown = False
 
             # Profile type handlers
-            profile_handlers = {
-                'ike': {
-                    'name': 'IKE Crypto',
-                    'list_fn': lambda: client.list_ike_crypto_profiles(folder),
-                    'delete_fn': client.delete_ike_crypto_profile
-                },
-                'ipsec': {
-                    'name': 'IPSec Crypto',
-                    'list_fn': lambda: client.list_ipsec_crypto_profiles(folder),
-                    'delete_fn': client.delete_ipsec_crypto_profile
-                },
-                'ssl_tls': {
-                    'name': 'SSL/TLS Service',
-                    'list_fn': lambda: client.list_tls_service_profiles(folder),
-                    'delete_fn': client.delete_tls_service_profile
-                },
-                'mgmt': {
-                    'name': 'Interface Management',
-                    'list_fn': lambda: client.list_interface_mgmt_profiles(folder),
-                    'delete_fn': client.delete_interface_mgmt_profile
-                }
-            }
+            profile_handlers = [
+                ('IKE Crypto', lambda: client.list_ike_crypto_profiles(folder), client.delete_ike_crypto_profile),
+                ('IPSec Crypto', lambda: client.list_ipsec_crypto_profiles(folder), client.delete_ipsec_crypto_profile),
+                ('SSL/TLS Service', lambda: client.list_tls_service_profiles(folder), client.delete_tls_service_profile),
+                ('Interface Management', lambda: client.list_interface_mgmt_profiles(folder), client.delete_interface_mgmt_profile),
+            ]
 
-            # Process each profile type
-            mgmt_403_shown = False
-            for profile_type, profile_names in profiles.items():
-                handler = profile_handlers[profile_type]
-                print(f"\n{Colors.CYAN}--- {handler['name']} Profiles ---{Colors.NC}")
-
-                # Get existing profiles
+            for profile_type, list_fn, delete_fn in profile_handlers:
                 try:
-                    existing = handler['list_fn']()
-                    existing_map = {p.get('name'): p.get('id') for p in existing}
+                    profiles = list_fn()
+                    for p in profiles:
+                        all_profiles.append({
+                            'name': p.get('name'),
+                            'type': profile_type,
+                            'id': p.get('id'),
+                            'delete_fn': delete_fn
+                        })
                 except Exception as e:
-                    if profile_type == 'mgmt' and "403" in str(e):
+                    if profile_type == 'Interface Management' and "403" in str(e):
                         if not mgmt_403_shown:
                             print_warning("Interface management requires Network Admin role in SCM")
-                            print_info("Use 'Cleanup > Firewall (CLI)' option instead")
+                            print_info("Use 'Cleanup > Firewall' option for interface management profiles")
                             mgmt_403_shown = True
                     else:
-                        print_error(f"Failed to list profiles: {e}")
-                    continue
+                        print_debug(f"Error listing {profile_type}: {e}")
 
-                for profile_name in profile_names:
-                    profile_id = existing_map.get(profile_name)
+            if not all_profiles:
+                print_warning("No profiles found in SCM")
+                return
 
-                    if not profile_id:
-                        print(f"{Colors.CYAN}[SKIP]{Colors.NC} {profile_name} - not found")
-                        not_found += 1
-                        continue
+            # Sort profiles by type for display
+            type_order = ['IKE Crypto', 'IPSec Crypto', 'SSL/TLS Service', 'Interface Management']
+            all_profiles.sort(key=lambda x: (type_order.index(x['type']) if x['type'] in type_order else 99, x['name']))
 
-                    if dry_run:
-                        print(f"{Colors.MAGENTA}[DRY-RUN]{Colors.NC} Would delete: {profile_name} (ID: {profile_id})")
-                        deleted += 1
+            # Show summary
+            print(f"\n{Colors.GREEN}Found {len(all_profiles)} profiles in SCM (folder: {folder}):{Colors.NC}")
+            for ptype in type_order:
+                count = sum(1 for p in all_profiles if p['type'] == ptype)
+                if count > 0:
+                    print(f"  {ptype}: {count}")
+
+            # Let user select profiles to delete
+            selected = get_multi_choice("Select profiles to delete:", all_profiles)
+
+            if not selected:
+                print("Cleanup cancelled.")
+                return
+
+            # Confirm deletion
+            print(f"\n{Colors.YELLOW}Selected {len(selected)} profiles for deletion:{Colors.NC}")
+            for p in selected:
+                print(f"  - {p['name']} ({p['type']})")
+
+            if not confirm(f"\n{Colors.RED}Delete these {len(selected)} profiles from SCM?{Colors.NC}", default=False):
+                print("Cleanup cancelled.")
+                return
+
+            # Delete selected profiles
+            print_info("Deleting profiles...")
+            deleted = 0
+            errors = 0
+
+            for profile in selected:
+                try:
+                    profile['delete_fn'](profile['id'])
+                    print(f"{Colors.GREEN}[DELETED]{Colors.NC} {profile['name']}")
+                    deleted += 1
+                except Exception as e:
+                    if profile['type'] == 'Interface Management' and "403" in str(e):
+                        print(f"{Colors.YELLOW}[SKIP]{Colors.NC} {profile['name']}: Requires Network Admin role")
                     else:
-                        try:
-                            handler['delete_fn'](profile_id)
-                            print(f"{Colors.GREEN}[DELETED]{Colors.NC} {profile_name}")
-                            deleted += 1
-                        except Exception as e:
-                            if profile_type == 'mgmt' and "403" in str(e):
-                                if not mgmt_403_shown:
-                                    print_warning("Interface management delete requires Network Admin role")
-                                    print_info("Use 'Cleanup > Firewall (CLI)' option instead")
-                                    mgmt_403_shown = True
-                            else:
-                                print(f"{Colors.RED}[ERROR]{Colors.NC} {profile_name}: {e}")
-                            errors += 1
+                        print(f"{Colors.RED}[ERROR]{Colors.NC} {profile['name']}: {e}")
+                    errors += 1
 
             # Summary
             print_section("Cleanup Summary")
-            print(f"  {Colors.GREEN}Deleted:{Colors.NC}     {deleted}")
-            print(f"  {Colors.CYAN}Not found:{Colors.NC}   {not_found}")
-            print(f"  {Colors.RED}Errors:{Colors.NC}      {errors}")
+            print(f"  {Colors.GREEN}Deleted:{Colors.NC}  {deleted}")
+            print(f"  {Colors.RED}Errors:{Colors.NC}   {errors}")
 
-            if dry_run:
-                print(f"\n{Colors.MAGENTA}Dry-run complete. No changes were made.{Colors.NC}")
-                if deleted > 0 and confirm("Proceed with actual deletion?", default=False):
-                    # Re-run without dry-run
-                    self._cleanup_scm_execute(client, name_prefix, folder)
-            elif deleted > 0 and errors == 0:
+            if deleted > 0:
                 # Push changes
                 if confirm("Push changes to devices?", default=True):
                     print_info("Pushing configuration...")
@@ -4320,110 +4376,9 @@ Enter the profile name prefix used when profiles were created.
         except Exception as e:
             print_error(f"Cleanup failed: {e}")
 
-    def _cleanup_scm_execute(self, client, name_prefix: str, folder: str):
-        """Execute SCM cleanup without dry-run (called after dry-run confirmation)."""
-        profiles = self._get_profile_names(name_prefix)
-        deleted = 0
-        errors = 0
-
-        profile_handlers = {
-            'ike': {
-                'list_fn': lambda: client.list_ike_crypto_profiles(folder),
-                'delete_fn': client.delete_ike_crypto_profile
-            },
-            'ipsec': {
-                'list_fn': lambda: client.list_ipsec_crypto_profiles(folder),
-                'delete_fn': client.delete_ipsec_crypto_profile
-            },
-            'ssl_tls': {
-                'list_fn': lambda: client.list_tls_service_profiles(folder),
-                'delete_fn': client.delete_tls_service_profile
-            },
-            'mgmt': {
-                'list_fn': lambda: client.list_interface_mgmt_profiles(folder),
-                'delete_fn': client.delete_interface_mgmt_profile
-            }
-        }
-
-        print_info("Deleting profiles...")
-
-        mgmt_403_shown = False
-        for profile_type, profile_names in profiles.items():
-            handler = profile_handlers[profile_type]
-
-            try:
-                existing = handler['list_fn']()
-                existing_map = {p.get('name'): p.get('id') for p in existing}
-            except Exception as e:
-                if profile_type == 'mgmt' and "403" in str(e):
-                    if not mgmt_403_shown:
-                        print_warning("Interface management profiles require Network Admin role in SCM")
-                        print_info("Use firewall cleanup option for interface management profiles")
-                        mgmt_403_shown = True
-                continue
-
-            for profile_name in profile_names:
-                profile_id = existing_map.get(profile_name)
-                if not profile_id:
-                    continue
-
-                try:
-                    handler['delete_fn'](profile_id)
-                    print(f"{Colors.GREEN}[DELETED]{Colors.NC} {profile_name}")
-                    deleted += 1
-                except Exception as e:
-                    if profile_type == 'mgmt' and "403" in str(e):
-                        if not mgmt_403_shown:
-                            print_warning("Interface management delete requires Network Admin role")
-                            print_info("Use firewall cleanup option for interface management profiles")
-                            mgmt_403_shown = True
-                    else:
-                        print(f"{Colors.RED}[ERROR]{Colors.NC} {profile_name}")
-                    errors += 1
-
-        print(f"\n{Colors.GREEN}Deleted:{Colors.NC} {deleted}  {Colors.RED}Errors:{Colors.NC} {errors}")
-
-        if deleted > 0 and errors == 0:
-            if confirm("Push changes to devices?", default=True):
-                try:
-                    result = client.push_config(folders=[folder], description="FIPS profile cleanup")
-                    if result.get('success') or result.get('job_id'):
-                        print_success("Push initiated")
-                    else:
-                        print_success("Push initiated")
-                except Exception as e:
-                    print_warning(f"Push may have failed: {e}")
-
     def _cleanup_firewall(self):
-        """Cleanup FIPS profiles from firewall."""
+        """Cleanup FIPS profiles from firewall with interactive selection."""
         creds = self.config.get_firewall_credentials()
-
-        # Ask for profile prefix
-        print(f"""
-{Colors.CYAN}Profile Naming:{Colors.NC}
-Enter the profile name prefix used when profiles were created.
-""")
-        name_prefix = get_input("Profile name prefix", default=self.DEFAULT_PREFIX)
-
-        profiles = self._get_profile_names(name_prefix)
-        total_profiles = sum(len(p) for p in profiles.values())
-
-        # Show what will be deleted
-        print(f"""
-{Colors.CYAN}Profiles to be deleted ({total_profiles} total):{Colors.NC}
-  IKE:     {', '.join(profiles['ike'])}
-  IPSec:   {', '.join(profiles['ipsec'])}
-  SSL/TLS: {', '.join(profiles['ssl_tls'])}
-  Mgmt:    {', '.join(profiles['mgmt'])}
-""")
-
-        # Dry run first?
-        dry_run = confirm("Perform dry-run first (show what would be deleted)?", default=True)
-
-        if not dry_run:
-            if not confirm(f"{Colors.RED}Delete these profiles from {creds['host']}?{Colors.NC}", default=False):
-                print("Cleanup cancelled.")
-                return
 
         try:
             import requests
@@ -4454,35 +4409,30 @@ Enter the profile name prefix used when profiles were created.
             api_key = root.find('.//key').text
             print_success("Connected to firewall")
 
-            # Track stats
-            deleted = 0
-            not_found = 0
-            errors = 0
+            # Query all existing profiles
+            print_info("Fetching existing profiles...")
 
-            # XPath templates for each profile type
-            xpath_templates = {
-                'ike': "/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ike-crypto-profiles/entry[@name='{name}']",
-                'ipsec': "/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ipsec-crypto-profiles/entry[@name='{name}']",
-                'ssl_tls': "/config/shared/ssl-tls-service-profile/entry[@name='{name}']",
-                'mgmt': "/config/devices/entry[@name='localhost.localdomain']/network/profiles/interface-management-profile/entry[@name='{name}']"
+            all_profiles = []
+
+            # XPath queries to list all profiles of each type
+            profile_queries = {
+                'IKE Crypto': "/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ike-crypto-profiles",
+                'IPSec Crypto': "/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ipsec-crypto-profiles",
+                'SSL/TLS Service': "/config/shared/ssl-tls-service-profile",
+                'Interface Management': "/config/devices/entry[@name='localhost.localdomain']/network/profiles/interface-management-profile"
             }
 
-            type_names = {
-                'ike': 'IKE Crypto',
-                'ipsec': 'IPSec Crypto',
-                'ssl_tls': 'SSL/TLS Service',
-                'mgmt': 'Interface Management'
+            # XPath templates for deletion (includes entry[@name='X'])
+            xpath_delete_templates = {
+                'IKE Crypto': "/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ike-crypto-profiles/entry[@name='{name}']",
+                'IPSec Crypto': "/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ipsec-crypto-profiles/entry[@name='{name}']",
+                'SSL/TLS Service': "/config/shared/ssl-tls-service-profile/entry[@name='{name}']",
+                'Interface Management': "/config/devices/entry[@name='localhost.localdomain']/network/profiles/interface-management-profile/entry[@name='{name}']"
             }
 
-            # Delete each profile type
-            for profile_type, profile_list in profiles.items():
-                print(f"\n{Colors.CYAN}--- {type_names[profile_type]} Profiles ---{Colors.NC}")
-
-                for profile_name in profile_list:
-                    xpath = xpath_templates[profile_type].format(name=profile_name)
-
-                    # Check if exists
-                    check_response = requests.post(
+            for profile_type, xpath in profile_queries.items():
+                try:
+                    response = requests.post(
                         base_url,
                         data={
                             'type': 'config',
@@ -4494,53 +4444,89 @@ Enter the profile name prefix used when profiles were created.
                         timeout=30
                     )
 
-                    check_root = ET.fromstring(check_response.text)
-                    exists = check_root.get('status') == 'success' and check_root.find('.//entry') is not None
+                    root = ET.fromstring(response.text)
+                    if root.get('status') == 'success':
+                        # Find all entry elements
+                        entries = root.findall('.//entry')
+                        for entry in entries:
+                            name = entry.get('name')
+                            if name:
+                                all_profiles.append({
+                                    'name': name,
+                                    'type': profile_type,
+                                    'xpath': xpath_delete_templates[profile_type].format(name=name)
+                                })
+                except Exception as e:
+                    print_debug(f"Error querying {profile_type}: {e}")
 
-                    if not exists:
-                        print(f"{Colors.CYAN}[SKIP]{Colors.NC} {profile_name} - not found")
-                        not_found += 1
-                        continue
+            if not all_profiles:
+                print_warning("No profiles found on firewall")
+                return
 
-                    if dry_run:
-                        print(f"{Colors.MAGENTA}[DRY-RUN]{Colors.NC} Would delete: {profile_name}")
+            # Sort profiles by type for display
+            type_order = ['IKE Crypto', 'IPSec Crypto', 'SSL/TLS Service', 'Interface Management']
+            all_profiles.sort(key=lambda x: (type_order.index(x['type']) if x['type'] in type_order else 99, x['name']))
+
+            # Show summary
+            print(f"\n{Colors.GREEN}Found {len(all_profiles)} profiles on firewall:{Colors.NC}")
+            for ptype in type_order:
+                count = sum(1 for p in all_profiles if p['type'] == ptype)
+                if count > 0:
+                    print(f"  {ptype}: {count}")
+
+            # Let user select profiles to delete
+            selected = get_multi_choice("Select profiles to delete:", all_profiles)
+
+            if not selected:
+                print("Cleanup cancelled.")
+                return
+
+            # Confirm deletion
+            print(f"\n{Colors.YELLOW}Selected {len(selected)} profiles for deletion:{Colors.NC}")
+            for p in selected:
+                print(f"  - {p['name']} ({p['type']})")
+
+            if not confirm(f"\n{Colors.RED}Delete these {len(selected)} profiles?{Colors.NC}", default=False):
+                print("Cleanup cancelled.")
+                return
+
+            # Delete selected profiles
+            print_info("Deleting profiles...")
+            deleted = 0
+            errors = 0
+
+            for profile in selected:
+                try:
+                    del_response = requests.post(
+                        base_url,
+                        data={
+                            'type': 'config',
+                            'action': 'delete',
+                            'xpath': profile['xpath'],
+                            'key': api_key
+                        },
+                        verify=False,
+                        timeout=30
+                    )
+
+                    del_root = ET.fromstring(del_response.text)
+                    if del_root.get('status') == 'success':
+                        print(f"{Colors.GREEN}[DELETED]{Colors.NC} {profile['name']}")
                         deleted += 1
                     else:
-                        # Delete the profile
-                        del_response = requests.post(
-                            base_url,
-                            data={
-                                'type': 'config',
-                                'action': 'delete',
-                                'xpath': xpath,
-                                'key': api_key
-                            },
-                            verify=False,
-                            timeout=30
-                        )
-
-                        del_root = ET.fromstring(del_response.text)
-                        if del_root.get('status') == 'success':
-                            print(f"{Colors.GREEN}[DELETED]{Colors.NC} {profile_name}")
-                            deleted += 1
-                        else:
-                            msg = del_root.find('.//msg')
-                            error_msg = msg.text if msg is not None else "Unknown error"
-                            print(f"{Colors.RED}[ERROR]{Colors.NC} {profile_name}: {error_msg}")
-                            errors += 1
+                        error_msg = extract_panos_error(del_response.text)
+                        print(f"{Colors.RED}[ERROR]{Colors.NC} {profile['name']}: {error_msg}")
+                        errors += 1
+                except Exception as e:
+                    print(f"{Colors.RED}[ERROR]{Colors.NC} {profile['name']}: {e}")
+                    errors += 1
 
             # Summary
             print_section("Cleanup Summary")
-            print(f"  {Colors.GREEN}Deleted:{Colors.NC}     {deleted}")
-            print(f"  {Colors.CYAN}Not found:{Colors.NC}   {not_found}")
-            print(f"  {Colors.RED}Errors:{Colors.NC}      {errors}")
+            print(f"  {Colors.GREEN}Deleted:{Colors.NC}  {deleted}")
+            print(f"  {Colors.RED}Errors:{Colors.NC}   {errors}")
 
-            if dry_run:
-                print(f"\n{Colors.MAGENTA}Dry-run complete. No changes were made.{Colors.NC}")
-                if deleted > 0 and confirm("Proceed with actual deletion?", default=False):
-                    # Re-run without dry-run
-                    self._cleanup_firewall_execute(creds, name_prefix, api_key, base_url)
-            elif deleted > 0 and errors == 0:
+            if deleted > 0:
                 # Commit changes
                 if confirm("Commit changes to firewall?", default=True):
                     print_info("Committing changes...")
@@ -4569,67 +4555,6 @@ Enter the profile name prefix used when profiles were created.
             print_info("Run: pip install requests")
         except Exception as e:
             print_error(f"Cleanup failed: {e}")
-
-    def _cleanup_firewall_execute(self, creds, name_prefix, api_key, base_url):
-        """Execute cleanup without dry-run (called after dry-run confirmation)."""
-        import requests
-        import xml.etree.ElementTree as ET
-
-        profiles = self._get_profile_names(name_prefix)
-        deleted = 0
-        errors = 0
-
-        xpath_templates = {
-            'ike': "/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ike-crypto-profiles/entry[@name='{name}']",
-            'ipsec': "/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ipsec-crypto-profiles/entry[@name='{name}']",
-            'ssl_tls': "/config/shared/ssl-tls-service-profile/entry[@name='{name}']",
-            'mgmt': "/config/devices/entry[@name='localhost.localdomain']/network/profiles/interface-management-profile/entry[@name='{name}']"
-        }
-
-        print_info("Deleting profiles...")
-
-        for profile_type, profile_list in profiles.items():
-            for profile_name in profile_list:
-                xpath = xpath_templates[profile_type].format(name=profile_name)
-
-                # Check if exists first
-                check_response = requests.post(
-                    base_url,
-                    data={'type': 'config', 'action': 'get', 'xpath': xpath, 'key': api_key},
-                    verify=False, timeout=30
-                )
-                check_root = ET.fromstring(check_response.text)
-                if check_root.get('status') != 'success' or check_root.find('.//entry') is None:
-                    continue
-
-                # Delete
-                del_response = requests.post(
-                    base_url,
-                    data={'type': 'config', 'action': 'delete', 'xpath': xpath, 'key': api_key},
-                    verify=False, timeout=30
-                )
-                del_root = ET.fromstring(del_response.text)
-                if del_root.get('status') == 'success':
-                    print(f"{Colors.GREEN}[DELETED]{Colors.NC} {profile_name}")
-                    deleted += 1
-                else:
-                    print(f"{Colors.RED}[ERROR]{Colors.NC} {profile_name}")
-                    errors += 1
-
-        print(f"\n{Colors.GREEN}Deleted:{Colors.NC} {deleted}  {Colors.RED}Errors:{Colors.NC} {errors}")
-
-        if deleted > 0 and errors == 0:
-            if confirm("Commit changes?", default=True):
-                commit_response = requests.post(
-                    base_url,
-                    data={'type': 'commit', 'cmd': '<commit></commit>', 'key': api_key},
-                    verify=False, timeout=120
-                )
-                commit_root = ET.fromstring(commit_response.text)
-                if commit_root.get('status') == 'success':
-                    print_success("Commit successful")
-                else:
-                    print_error("Commit failed")
 
 
 def main_menu(config_manager: ConfigManager):
