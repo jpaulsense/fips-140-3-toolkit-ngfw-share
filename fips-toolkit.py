@@ -31,7 +31,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 # Version
-__version__ = "1.2.2"
+__version__ = "1.3.0"
 
 # Debug mode - set to True to see detailed API responses
 DEBUG = os.environ.get('FIPS_TOOLKIT_DEBUG', '').lower() in ('1', 'true', 'yes')
@@ -166,6 +166,219 @@ def extract_panos_error(response_text: str) -> str:
     except Exception as e:
         print_debug(f"Error extracting message: {e}")
         return f"Error parsing response: {str(e)}"
+
+
+class DebugCapture:
+    """Captures debug output and system info for troubleshooting."""
+
+    def __init__(self):
+        self.logs = []
+        self.device_info = {}
+        self.scm_info = {}
+        self.start_time = None
+        self.end_time = None
+        self.original_debug = False
+
+    def start(self):
+        """Start capturing debug output."""
+        global DEBUG
+        self.original_debug = DEBUG
+        DEBUG = True
+        self.start_time = datetime.now()
+        self.logs = []
+        self.log("=" * 70)
+        self.log("DEBUG CAPTURE STARTED")
+        self.log(f"Timestamp: {self.start_time.isoformat()}")
+        self.log(f"Toolkit Version: {__version__}")
+        self.log(f"Python Version: {sys.version}")
+        self.log(f"Platform: {sys.platform}")
+        self.log("=" * 70)
+
+    def stop(self):
+        """Stop capturing and restore original debug state."""
+        global DEBUG
+        self.end_time = datetime.now()
+        self.log("=" * 70)
+        self.log("DEBUG CAPTURE ENDED")
+        self.log(f"Duration: {self.end_time - self.start_time}")
+        self.log("=" * 70)
+        DEBUG = self.original_debug
+
+    def log(self, message: str):
+        """Add a log entry."""
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        entry = f"[{timestamp}] {message}"
+        self.logs.append(entry)
+        # Also print if we're in debug mode
+        if DEBUG:
+            print(f"{Colors.MAGENTA}[DEBUG]{Colors.NC} {message}")
+
+    def collect_firewall_info(self, host: str, api_key: str) -> Dict[str, str]:
+        """Collect firewall system information for debugging."""
+        import requests
+        import xml.etree.ElementTree as ET
+
+        info = {
+            'host': host,
+            'model': 'Unknown',
+            'serial': 'Unknown',
+            'sw_version': 'Unknown',
+            'hostname': 'Unknown',
+            'uptime': 'Unknown',
+            'multi_vsys': 'Unknown'
+        }
+
+        try:
+            self.log(f"Collecting device info from {host}...")
+            base_url = f"https://{host}/api/"
+
+            # Get system info
+            response = requests.post(base_url, data={
+                'type': 'op',
+                'cmd': '<show><system><info></info></system></show>',
+                'key': api_key
+            }, verify=False, timeout=30)
+
+            root = ET.fromstring(response.text)
+            result = root.find('.//result')
+
+            if result is not None:
+                for field, xpath in [
+                    ('hostname', 'hostname'),
+                    ('model', 'model'),
+                    ('serial', 'serial'),
+                    ('sw_version', 'sw-version'),
+                    ('uptime', 'uptime'),
+                    ('multi_vsys', 'multi-vsys')
+                ]:
+                    elem = result.find(xpath)
+                    if elem is not None and elem.text:
+                        info[field] = elem.text
+
+            self.log(f"Device: {info['model']} (Serial: {info['serial']})")
+            self.log(f"PAN-OS Version: {info['sw_version']}")
+            self.log(f"Hostname: {info['hostname']}")
+
+        except Exception as e:
+            self.log(f"Error collecting device info: {e}")
+
+        self.device_info = info
+        return info
+
+    def collect_scm_info(self, client) -> Dict[str, str]:
+        """Collect SCM tenant information for debugging."""
+        info = {
+            'tsg_id': getattr(client, 'tsg_id', 'Unknown'),
+            'client_id': getattr(client, 'client_id', 'Unknown')[:40] + '...' if hasattr(client, 'client_id') else 'Unknown',
+            'authenticated': 'Unknown'
+        }
+
+        try:
+            self.log("Collecting SCM tenant info...")
+            # Check if we have a valid token
+            if hasattr(client, 'token') and client.token:
+                info['authenticated'] = 'Yes'
+            else:
+                info['authenticated'] = 'No'
+
+            self.log(f"TSG ID: {info['tsg_id']}")
+            self.log(f"Authenticated: {info['authenticated']}")
+
+        except Exception as e:
+            self.log(f"Error collecting SCM info: {e}")
+
+        self.scm_info = info
+        return info
+
+    def save_report(self, filename: str = None) -> str:
+        """Save debug report to file."""
+        if filename is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"fips_debug_{timestamp}.txt"
+
+        # Ensure we're saving to a known location
+        debug_dir = CONFIG_DIR / "debug_reports"
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        filepath = debug_dir / filename
+
+        report_lines = []
+        report_lines.append("=" * 70)
+        report_lines.append("FIPS 140-3 TOOLKIT - DEBUG REPORT")
+        report_lines.append("=" * 70)
+        report_lines.append("")
+        report_lines.append(f"Generated: {datetime.now().isoformat()}")
+        report_lines.append(f"Toolkit Version: {__version__}")
+        report_lines.append("")
+
+        # Device Info
+        if self.device_info:
+            report_lines.append("-" * 70)
+            report_lines.append("DEVICE INFORMATION")
+            report_lines.append("-" * 70)
+            for key, value in self.device_info.items():
+                report_lines.append(f"  {key}: {value}")
+            report_lines.append("")
+
+        # SCM Info
+        if self.scm_info:
+            report_lines.append("-" * 70)
+            report_lines.append("SCM INFORMATION")
+            report_lines.append("-" * 70)
+            for key, value in self.scm_info.items():
+                report_lines.append(f"  {key}: {value}")
+            report_lines.append("")
+
+        # Debug Logs
+        report_lines.append("-" * 70)
+        report_lines.append("DEBUG LOG")
+        report_lines.append("-" * 70)
+        report_lines.extend(self.logs)
+        report_lines.append("")
+        report_lines.append("=" * 70)
+        report_lines.append("END OF DEBUG REPORT")
+        report_lines.append("=" * 70)
+
+        with open(filepath, 'w') as f:
+            f.write('\n'.join(report_lines))
+
+        return str(filepath)
+
+
+# Global debug capture instance
+_debug_capture = None
+
+
+def get_debug_capture() -> DebugCapture:
+    """Get or create the global debug capture instance."""
+    global _debug_capture
+    if _debug_capture is None:
+        _debug_capture = DebugCapture()
+    return _debug_capture
+
+
+def prompt_debug_retry(error_msg: str, operation_name: str = "operation") -> bool:
+    """
+    Prompt user to retry with debug mode after an error.
+
+    Returns True if user wants to retry with debug, False otherwise.
+    """
+    print(f"\n{Colors.YELLOW}{'─' * 70}{Colors.NC}")
+    print(f"{Colors.YELLOW}Error occurred during {operation_name}{Colors.NC}")
+    print(f"{Colors.RED}Error: {error_msg}{Colors.NC}")
+    print(f"{Colors.YELLOW}{'─' * 70}{Colors.NC}")
+    print(f"""
+{Colors.CYAN}Would you like to retry with debug mode enabled?{Colors.NC}
+
+This will:
+  1. Enable detailed logging of all API requests/responses
+  2. Collect device information (model, firmware version, etc.)
+  3. Save a debug report file you can send to the developer
+
+The debug report will be saved to: {Colors.WHITE}~/.fips-toolkit/debug_reports/{Colors.NC}
+""")
+
+    response = input(f"{Colors.CYAN}Retry with debug mode? [y/N]: {Colors.NC}").strip().lower()
+    return response in ('y', 'yes')
 
 
 def clear_screen():
@@ -1179,18 +1392,28 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
         else:
             self._deploy_all_firewall(tier, name_prefix)
 
-    def _deploy_all_scm(self, tier: str, name_prefix: str):
+    def _deploy_all_scm(self, tier: str, name_prefix: str, debug_capture: DebugCapture = None, folder: str = None):
         """Deploy all FIPS profiles via SCM."""
         # Map tier to short name for display
         tier_short = {"max": "max", "recommended": "rec", "compat": "compat"}.get(tier, tier)
-        folder = get_input("Target folder", default="Shared")
 
-        if not confirm(f"Deploy profiles to SCM folder '{folder}'?"):
-            print("Deployment cancelled.")
-            return
+        # Only ask for folder on first run (not debug retry)
+        if folder is None:
+            folder = get_input("Target folder", default="Shared")
+
+        if debug_capture is None:
+            if not confirm(f"Deploy profiles to SCM folder '{folder}'?"):
+                print("Deployment cancelled.")
+                return
+
+        error_messages = []  # Track errors for debug prompt
 
         try:
             client = self._get_client()
+
+            # Collect SCM info if in debug mode
+            if debug_capture:
+                debug_capture.collect_scm_info(client)
 
             created = 0
             skipped = 0
@@ -1198,6 +1421,8 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
 
             # Deploy IKE profile
             print_info(f"Creating IKE crypto profile...")
+            if debug_capture:
+                debug_capture.log(f"Creating IKE profile: {name_prefix}-ike-{tier_short}")
             try:
                 client.create_fips_ike_profile(tier=tier, folder=folder, name_prefix=name_prefix)
                 print_success(f"Created {name_prefix}-ike-{tier_short}")
@@ -1208,10 +1433,15 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
                     skipped += 1
                 else:
                     print_error(f"Failed: {e}")
+                    error_messages.append(f"IKE: {e}")
+                    if debug_capture:
+                        debug_capture.log(f"IKE ERROR: {e}")
                     errors += 1
 
             # Deploy IPSec profile
             print_info(f"Creating IPSec crypto profile...")
+            if debug_capture:
+                debug_capture.log(f"Creating IPSec profile: {name_prefix}-ipsec-{tier_short}")
             try:
                 client.create_fips_ipsec_profile(tier=tier, folder=folder, name_prefix=name_prefix)
                 print_success(f"Created {name_prefix}-ipsec-{tier_short}")
@@ -1222,14 +1452,20 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
                     skipped += 1
                 else:
                     print_error(f"Failed: {e}")
+                    error_messages.append(f"IPSec: {e}")
+                    if debug_capture:
+                        debug_capture.log(f"IPSec ERROR: {e}")
                     errors += 1
 
             # Deploy TLS profile (needs certificate selection)
             print_info(f"Creating TLS service profile...")
-            print(f"\n{Colors.CYAN}TLS Profile Configuration:{Colors.NC}")
-            print("TLS profiles require a certificate. Select from available certificates:")
+            if debug_capture is None:  # Only prompt on first run
+                print(f"\n{Colors.CYAN}TLS Profile Configuration:{Colors.NC}")
+                print("TLS profiles require a certificate. Select from available certificates:")
             cert_name = self._select_certificate(client, folder)
             if cert_name:
+                if debug_capture:
+                    debug_capture.log(f"Creating TLS profile with cert: {cert_name}")
                 try:
                     client.create_fips_tls_profile(tier=tier,
                                                     certificate=cert_name,
@@ -1243,6 +1479,9 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
                         skipped += 1
                     else:
                         print_error(f"Failed: {e}")
+                        error_messages.append(f"TLS: {e}")
+                        if debug_capture:
+                            debug_capture.log(f"TLS ERROR: {e}")
                         errors += 1
             else:
                 print_info("Skipped TLS profile (no certificate)")
@@ -1250,6 +1489,8 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
 
             # Deploy management profile
             print_info(f"Creating interface management profile...")
+            if debug_capture:
+                debug_capture.log(f"Creating management profile: {name_prefix}-mgmt")
             try:
                 client.create_fips_mgmt_profile(folder=folder, name_prefix=name_prefix)
                 print_success(f"Created {name_prefix}-mgmt")
@@ -1262,6 +1503,8 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
                     # Permission issue - offer CLI fallback
                     print_warning("SCM API returned 403 Forbidden for interface management profile")
                     print_info("This requires Network Admin or Superuser role in SCM.")
+                    if debug_capture:
+                        debug_capture.log("MGMT 403 ERROR: Requires Network Admin role")
                     if self.config.has_firewall_credentials():
                         if confirm("Deploy interface management profile via CLI (direct to firewall) instead?"):
                             mgmt_result = self._deploy_mgmt_via_cli(name_prefix)
@@ -1273,6 +1516,7 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
                                 skipped += 1
                             else:
                                 print_error(f"CLI deployment failed: {mgmt_result}")
+                                error_messages.append(f"Mgmt CLI: {mgmt_result}")
                                 errors += 1
                         else:
                             print_info("Skipped interface management profile")
@@ -1282,6 +1526,9 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
                         skipped += 1
                 else:
                     print_error(f"Failed: {e}")
+                    error_messages.append(f"Mgmt: {e}")
+                    if debug_capture:
+                        debug_capture.log(f"MGMT ERROR: {e}")
                     errors += 1
 
             # Summary
@@ -1290,29 +1537,68 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
             print(f"  {Colors.YELLOW}Skipped:{Colors.NC}  {skipped}")
             print(f"  {Colors.RED}Errors:{Colors.NC}   {errors}")
 
+            # If errors occurred and not already in debug mode, offer debug retry
+            if errors > 0 and debug_capture is None:
+                if prompt_debug_retry("; ".join(error_messages), "SCM deployment"):
+                    print_info("\nRetrying with debug mode enabled...")
+                    dc = DebugCapture()
+                    dc.start()
+                    self._deploy_all_scm(tier, name_prefix, debug_capture=dc, folder=folder)
+                    dc.stop()
+                    filepath = dc.save_report()
+                    print(f"\n{Colors.GREEN}Debug report saved to:{Colors.NC} {filepath}")
+                    print(f"{Colors.CYAN}Please send this file to the developer for troubleshooting.{Colors.NC}")
+                    return
+
+            # If this was a debug run, log completion
+            if debug_capture:
+                debug_capture.log(f"Deployment complete: {created} created, {skipped} skipped, {errors} errors")
+
             if created > 0 and confirm("\nPush configuration to devices?"):
                 try:
                     print_info("Pushing configuration...")
+                    if debug_capture:
+                        debug_capture.log("Pushing configuration to devices...")
                     job = client.push_config(
                         folders=[folder],
                         description=f"FIPS 140-3 {tier} profile deployment"
                     )
                     print_success(f"Configuration push initiated (Job: {job.get('job_id', 'N/A')})")
+                    if debug_capture:
+                        debug_capture.log(f"Push initiated: Job ID {job.get('job_id', 'N/A')}")
                 except Exception as e:
                     print_error(f"Push failed: {e}")
+                    if debug_capture:
+                        debug_capture.log(f"Push FAILED: {e}")
 
         except Exception as e:
-            print_error(f"Deployment failed: {e}")
+            error_msg = f"Deployment failed: {e}"
+            print_error(error_msg)
+            if debug_capture:
+                debug_capture.log(f"EXCEPTION: {e}")
+            elif prompt_debug_retry(str(e), "SCM deployment"):
+                print_info("\nRetrying with debug mode enabled...")
+                dc = DebugCapture()
+                dc.start()
+                self._deploy_all_scm(tier, name_prefix, debug_capture=dc, folder=folder)
+                dc.stop()
+                filepath = dc.save_report()
+                print(f"\n{Colors.GREEN}Debug report saved to:{Colors.NC} {filepath}")
+                print(f"{Colors.CYAN}Please send this file to the developer for troubleshooting.{Colors.NC}")
 
-    def _deploy_all_firewall(self, tier: str, name_prefix: str):
+    def _deploy_all_firewall(self, tier: str, name_prefix: str, debug_capture: DebugCapture = None):
         """Deploy all FIPS profiles directly to firewall via XML API."""
         # Map tier to short name for display
         tier_short = {"max": "max", "recommended": "rec", "compat": "compat"}.get(tier, tier)
         creds = self.config.get_firewall_credentials()
 
-        if not confirm(f"Deploy profiles to firewall {creds['host']}?"):
-            print("Deployment cancelled.")
-            return
+        # Only confirm on first run (not debug retry)
+        if debug_capture is None:
+            if not confirm(f"Deploy profiles to firewall {creds['host']}?"):
+                print("Deployment cancelled.")
+                return
+
+        error_messages = []  # Track errors for debug prompt
 
         try:
             import requests
@@ -1324,6 +1610,9 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
 
             # Authenticate
             print_info(f"Connecting to {creds['host']}...")
+            if debug_capture:
+                debug_capture.log(f"Connecting to firewall: {creds['host']}")
+
             response = requests.get(
                 base_url,
                 params={
@@ -1337,11 +1626,19 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
 
             root = ET.fromstring(response.text)
             if root.get('status') != 'success':
-                print_error("Failed to authenticate to firewall")
+                error_msg = "Failed to authenticate to firewall"
+                print_error(error_msg)
+                if debug_capture:
+                    debug_capture.log(f"AUTH ERROR: {response.text}")
+                error_messages.append(error_msg)
                 return
 
             api_key = root.find('.//key').text
             print_success("Connected to firewall")
+
+            # Collect device info if in debug mode
+            if debug_capture:
+                debug_capture.collect_firewall_info(creds['host'], api_key)
 
             created = 0
             skipped = 0
@@ -1352,6 +1649,8 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
             # Deploy IKE crypto profile
             print_info("Creating IKE crypto profile...")
             ike_name = f"{name_prefix}-ike-{tier_short}"
+            if debug_capture:
+                debug_capture.log(f"Creating IKE profile: {ike_name}")
             ike_result = self._create_ike_profile_firewall(
                 base_url, api_key, ike_name, profile_config['ike']
             )
@@ -1363,11 +1662,16 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
                 skipped += 1
             else:
                 print_error(f"Failed to create {ike_name}: {ike_result}")
+                error_messages.append(f"IKE: {ike_result}")
+                if debug_capture:
+                    debug_capture.log(f"IKE ERROR: {ike_result}")
                 errors += 1
 
             # Deploy IPSec crypto profile
             print_info("Creating IPSec crypto profile...")
             ipsec_name = f"{name_prefix}-ipsec-{tier_short}"
+            if debug_capture:
+                debug_capture.log(f"Creating IPSec profile: {ipsec_name}")
             ipsec_result = self._create_ipsec_profile_firewall(
                 base_url, api_key, ipsec_name, profile_config['ipsec']
             )
@@ -1379,11 +1683,16 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
                 skipped += 1
             else:
                 print_error(f"Failed to create {ipsec_name}: {ipsec_result}")
+                error_messages.append(f"IPSec: {ipsec_result}")
+                if debug_capture:
+                    debug_capture.log(f"IPSec ERROR: {ipsec_result}")
                 errors += 1
 
             # Deploy management profile
             print_info("Creating interface management profile...")
             mgmt_name = f"{name_prefix}-mgmt"
+            if debug_capture:
+                debug_capture.log(f"Creating management profile: {mgmt_name}")
             mgmt_result = self._create_mgmt_profile_firewall(base_url, api_key, mgmt_name)
             if mgmt_result == 'created':
                 print_success(f"Created {mgmt_name}")
@@ -1393,6 +1702,9 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
                 skipped += 1
             else:
                 print_error(f"Failed to create {mgmt_name}: {mgmt_result}")
+                error_messages.append(f"Mgmt: {mgmt_result}")
+                if debug_capture:
+                    debug_capture.log(f"Mgmt ERROR: {mgmt_result}")
                 errors += 1
 
             # Summary
@@ -1405,8 +1717,27 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
             print(f"\n{Colors.YELLOW}Note:{Colors.NC} SSL/TLS profiles require a certificate to be configured.")
             print("Use the specific profile deployment option to create TLS profiles.")
 
+            # If errors occurred and not already in debug mode, offer debug retry
+            if errors > 0 and debug_capture is None:
+                if prompt_debug_retry("; ".join(error_messages), "firewall deployment"):
+                    print_info("\nRetrying with debug mode enabled...")
+                    dc = DebugCapture()
+                    dc.start()
+                    self._deploy_all_firewall(tier, name_prefix, debug_capture=dc)
+                    dc.stop()
+                    filepath = dc.save_report()
+                    print(f"\n{Colors.GREEN}Debug report saved to:{Colors.NC} {filepath}")
+                    print(f"{Colors.CYAN}Please send this file to the developer for troubleshooting.{Colors.NC}")
+                    return
+
+            # If this was a debug run, log completion
+            if debug_capture:
+                debug_capture.log(f"Deployment complete: {created} created, {skipped} skipped, {errors} errors")
+
             if created > 0 and confirm("\nCommit changes to firewall?"):
                 print_info("Committing changes...")
+                if debug_capture:
+                    debug_capture.log("Committing changes to firewall...")
                 commit_response = requests.post(
                     base_url,
                     data={
@@ -1422,16 +1753,34 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
                     job_id = commit_root.find('.//job')
                     if job_id is not None:
                         print_success(f"Commit initiated (Job ID: {job_id.text})")
+                        if debug_capture:
+                            debug_capture.log(f"Commit initiated: Job ID {job_id.text}")
                     else:
                         print_success("Commit successful")
+                        if debug_capture:
+                            debug_capture.log("Commit successful")
                 else:
                     print_error("Commit failed")
+                    if debug_capture:
+                        debug_capture.log(f"Commit FAILED: {commit_response.text}")
 
         except ImportError:
             print_error("Missing dependency: requests")
             print_info("Run: pip install requests")
         except Exception as e:
-            print_error(f"Deployment failed: {e}")
+            error_msg = f"Deployment failed: {e}"
+            print_error(error_msg)
+            if debug_capture:
+                debug_capture.log(f"EXCEPTION: {e}")
+            elif prompt_debug_retry(str(e), "firewall deployment"):
+                print_info("\nRetrying with debug mode enabled...")
+                dc = DebugCapture()
+                dc.start()
+                self._deploy_all_firewall(tier, name_prefix, debug_capture=dc)
+                dc.stop()
+                filepath = dc.save_report()
+                print(f"\n{Colors.GREEN}Debug report saved to:{Colors.NC} {filepath}")
+                print(f"{Colors.CYAN}Please send this file to the developer for troubleshooting.{Colors.NC}")
 
     def _create_ike_profile_firewall(self, base_url: str, api_key: str,
                                       name: str, config: dict) -> str:
