@@ -31,7 +31,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 # Version
-__version__ = "1.2.1"
+__version__ = "1.2.2"
 
 # Debug mode - set to True to see detailed API responses
 DEBUG = os.environ.get('FIPS_TOOLKIT_DEBUG', '').lower() in ('1', 'true', 'yes')
@@ -1439,14 +1439,16 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
         import requests
         import xml.etree.ElementTree as ET
 
-        xpath = f"/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ike-crypto-profiles/entry[@name='{name}']"
+        # XPath to parent container - element contains the <entry> wrapper
+        xpath = f"/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ike-crypto-profiles"
+        xpath_check = f"{xpath}/entry[@name='{name}']"
 
         print_debug(f"Creating IKE profile: {name}")
         print_debug(f"Config: {config}")
 
-        # Check if exists
+        # Check if exists (use full xpath for check)
         check = requests.post(base_url, data={
-            'type': 'config', 'action': 'get', 'xpath': xpath, 'key': api_key
+            'type': 'config', 'action': 'get', 'xpath': xpath_check, 'key': api_key
         }, verify=False, timeout=30)
         if ET.fromstring(check.text).find('.//entry') is not None:
             return 'exists'
@@ -1483,14 +1485,16 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
         import requests
         import xml.etree.ElementTree as ET
 
-        xpath = f"/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ipsec-crypto-profiles/entry[@name='{name}']"
+        # XPath to parent container - element contains the <entry> wrapper
+        xpath = f"/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ipsec-crypto-profiles"
+        xpath_check = f"{xpath}/entry[@name='{name}']"
 
         print_debug(f"Creating IPSec profile: {name}")
         print_debug(f"Config: {config}")
 
-        # Check if exists
+        # Check if exists (use full xpath for check)
         check = requests.post(base_url, data={
-            'type': 'config', 'action': 'get', 'xpath': xpath, 'key': api_key
+            'type': 'config', 'action': 'get', 'xpath': xpath_check, 'key': api_key
         }, verify=False, timeout=30)
         if ET.fromstring(check.text).find('.//entry') is not None:
             return 'exists'
@@ -1527,13 +1531,15 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
         import requests
         import xml.etree.ElementTree as ET
 
-        xpath = f"/config/devices/entry[@name='localhost.localdomain']/network/profiles/interface-management-profile/entry[@name='{name}']"
+        # XPath to parent container - element contains the <entry> wrapper
+        xpath = f"/config/devices/entry[@name='localhost.localdomain']/network/profiles/interface-management-profile"
+        xpath_check = f"{xpath}/entry[@name='{name}']"
 
         print_debug(f"Creating management profile: {name}")
 
-        # Check if exists
+        # Check if exists (use full xpath for check)
         check = requests.post(base_url, data={
-            'type': 'config', 'action': 'get', 'xpath': xpath, 'key': api_key
+            'type': 'config', 'action': 'get', 'xpath': xpath_check, 'key': api_key
         }, verify=False, timeout=30)
         if ET.fromstring(check.text).find('.//entry') is not None:
             return 'exists'
