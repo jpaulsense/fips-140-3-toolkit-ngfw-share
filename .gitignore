@@ -64,3 +64,6 @@ htmlcov/
 # Build artifacts
 *.tar.gz
 *.zip
+
+# Claude instructions (personal/local)
+CLAUDE.md

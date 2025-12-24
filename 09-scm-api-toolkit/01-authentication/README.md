@@ -109,8 +109,16 @@ fips-automation@1234567890.iam.panserviceaccount
 |------|-------------|----------|
 | **Superuser** | Full access to all features | Development/Testing only |
 | **Security Admin** | Security policies, profiles, objects | FIPS profile management |
-| **Network Admin** | Network configuration, VPN | IKE/IPSec configuration |
+| **Network Admin** | Network configuration, VPN, interface mgmt | IKE/IPSec + Interface Management |
 | **Read Only** | View-only access | Monitoring, compliance checks |
+
+> **Important: Interface Management Profiles**
+>
+> Creating interface management profiles via API requires **Network Admin** or **Superuser** role.
+> If your service account only has Security Admin role, you will receive a 403 Forbidden error
+> when attempting to create interface management profiles. In this case, you can:
+> - Add Network Admin role to your service account, OR
+> - Use the toolkit's CLI option to deploy directly to the firewall (requires superuser on firewall)
 
 5. Click **Save** or **Assign**
 

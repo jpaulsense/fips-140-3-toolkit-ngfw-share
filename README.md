@@ -97,7 +97,10 @@ Quick role recommendations (Principle of Least Privilege):
 | Use Case | Recommended Role | Access Level |
 |----------|------------------|--------------|
 | Audit only (validate compliance) | **Auditor** | Read-only |
-| Deploy FIPS profiles | **Security Administrator** | Read + Write |
+| Deploy IKE, IPSec, TLS profiles | **Security Administrator** | Read + Write |
+| Deploy Interface Management profiles | **Network Admin** | Required (in addition to Security Admin) |
+
+> **Note**: Interface management profiles require **Network Admin** role in SCM. Without this role, you'll receive 403 Forbidden errors. The toolkit will automatically offer to deploy these profiles via CLI directly to your firewall as a fallback (most users have superuser access on firewalls).
 
 For step-by-step instructions including screenshots and troubleshooting, see the [full credential setup guide](docs/SCM-CREDENTIAL-SETUP.md).
 

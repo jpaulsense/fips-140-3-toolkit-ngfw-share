@@ -31,11 +31,58 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 # Version
-__version__ = "1.0.0"
+__version__ = "1.2.0"
 
 # Configuration file location
 CONFIG_DIR = Path.home() / ".fips-toolkit"
 CONFIG_FILE = CONFIG_DIR / "config.json"
+
+# Environment variable names
+ENV_VARS = {
+    'scm': {
+        'client_id': 'SCM_CLIENT_ID',
+        'client_secret': 'SCM_CLIENT_SECRET',
+        'tsg_id': 'SCM_TSG_ID'
+    },
+    'firewall': {
+        'host': 'PANOS_HOST',
+        'username': 'PANOS_USERNAME',
+        'password': 'PANOS_PASSWORD'
+    }
+}
+
+
+def load_dotenv():
+    """Load environment variables from .env file if present."""
+    # Check multiple locations for .env file
+    env_paths = [
+        Path.cwd() / '.env',
+        Path(__file__).parent / '.env',
+        CONFIG_DIR / '.env',
+        Path.home() / '.env'
+    ]
+
+    for env_path in env_paths:
+        if env_path.exists():
+            try:
+                with open(env_path, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        # Skip comments and empty lines
+                        if not line or line.startswith('#'):
+                            continue
+                        # Parse KEY=VALUE
+                        if '=' in line:
+                            key, value = line.split('=', 1)
+                            key = key.strip()
+                            value = value.strip().strip('"').strip("'")
+                            # Only set if not already in environment
+                            if key and key not in os.environ:
+                                os.environ[key] = value
+                return env_path
+            except Exception:
+                pass
+    return None
 
 
 class Colors:
@@ -243,31 +290,75 @@ class ConfigManager:
         # Set restrictive permissions
         CONFIG_FILE.chmod(0o600)
 
+    def _get_env_scm(self) -> Dict[str, str]:
+        """Get SCM credentials from environment variables."""
+        return {
+            'client_id': os.environ.get(ENV_VARS['scm']['client_id'], ''),
+            'client_secret': os.environ.get(ENV_VARS['scm']['client_secret'], ''),
+            'tsg_id': os.environ.get(ENV_VARS['scm']['tsg_id'], '')
+        }
+
+    def _get_env_firewall(self) -> Dict[str, str]:
+        """Get firewall credentials from environment variables."""
+        return {
+            'host': os.environ.get(ENV_VARS['firewall']['host'], ''),
+            'username': os.environ.get(ENV_VARS['firewall']['username'], ''),
+            'password': os.environ.get(ENV_VARS['firewall']['password'], '')
+        }
+
     def has_scm_credentials(self) -> bool:
-        """Check if SCM credentials are configured."""
+        """Check if SCM credentials are configured (config file or env vars)."""
+        # Check config file first
         scm = self.config.get('scm', {})
-        return all([
-            scm.get('client_id'),
-            scm.get('client_secret'),
-            scm.get('tsg_id')
-        ])
+        if all([scm.get('client_id'), scm.get('client_secret'), scm.get('tsg_id')]):
+            return True
+        # Check environment variables
+        env_scm = self._get_env_scm()
+        return all([env_scm.get('client_id'), env_scm.get('client_secret'), env_scm.get('tsg_id')])
 
     def has_firewall_credentials(self) -> bool:
-        """Check if firewall credentials are configured."""
+        """Check if firewall credentials are configured (config file or env vars)."""
+        # Check config file first
         fw = self.config.get('firewall', {})
-        return all([
-            fw.get('host'),
-            fw.get('username'),
-            fw.get('password')
-        ])
+        if all([fw.get('host'), fw.get('username'), fw.get('password')]):
+            return True
+        # Check environment variables
+        env_fw = self._get_env_firewall()
+        return all([env_fw.get('host'), env_fw.get('username'), env_fw.get('password')])
 
     def get_scm_credentials(self) -> Dict[str, str]:
-        """Get SCM credentials."""
-        return self.config.get('scm', {})
+        """Get SCM credentials (config file takes precedence over env vars)."""
+        scm = self.config.get('scm', {})
+        if all([scm.get('client_id'), scm.get('client_secret'), scm.get('tsg_id')]):
+            return scm
+        # Fall back to environment variables
+        return self._get_env_scm()
 
     def get_firewall_credentials(self) -> Dict[str, str]:
-        """Get firewall credentials."""
-        return self.config.get('firewall', {})
+        """Get firewall credentials (config file takes precedence over env vars)."""
+        fw = self.config.get('firewall', {})
+        if all([fw.get('host'), fw.get('username'), fw.get('password')]):
+            return fw
+        # Fall back to environment variables
+        return self._get_env_firewall()
+
+    def get_credential_source(self, cred_type: str) -> str:
+        """Get the source of credentials (config, env, or none)."""
+        if cred_type == 'scm':
+            scm = self.config.get('scm', {})
+            if all([scm.get('client_id'), scm.get('client_secret'), scm.get('tsg_id')]):
+                return 'config'
+            env_scm = self._get_env_scm()
+            if all([env_scm.get('client_id'), env_scm.get('client_secret'), env_scm.get('tsg_id')]):
+                return 'env'
+        elif cred_type == 'firewall':
+            fw = self.config.get('firewall', {})
+            if all([fw.get('host'), fw.get('username'), fw.get('password')]):
+                return 'config'
+            env_fw = self._get_env_firewall()
+            if all([env_fw.get('host'), env_fw.get('username'), env_fw.get('password')]):
+                return 'env'
+        return 'none'
 
     def set_scm_credentials(self, client_id: str, client_secret: str,
                             tsg_id: str):
@@ -400,8 +491,14 @@ cryptographic modules. Compliance ensures you're using approved algorithms:
   {Colors.YELLOW}For CONFIGURE operations (deploy FIPS profiles):{Colors.NC}
   Assign: {Colors.BOLD}Security Administrator{Colors.NC}
   - Read/write access to security policies
-  - Can create and modify profiles
+  - Can create IKE, IPSec, and TLS profiles
   - Can push configuration changes
+
+  {Colors.RED}For INTERFACE MANAGEMENT PROFILES:{Colors.NC}
+  Also assign: {Colors.BOLD}Network Admin{Colors.NC}
+  - Required in addition to Security Admin
+  - Without this role, you'll get 403 Forbidden errors
+  - Alternative: Deploy via CLI to firewall (most users have superuser there)
 
 {Colors.CYAN}Enter your SCM credentials below:{Colors.NC}
 """)
@@ -683,21 +780,28 @@ class AuditMode:
 
             # Audit management profiles
             print(f"\n{Colors.BOLD}Interface Management Profiles:{Colors.NC}")
-            mgmt_profiles = client.list_interface_mgmt_profiles(folder=folder)
-            for profile in mgmt_profiles:
-                name = profile.get("name", "Unknown")
-                findings = validate_mgmt_profile(profile)
-                if findings:
-                    print(f"  {Colors.RED}[FAIL]{Colors.NC} {name}")
-                    for f in findings:
-                        print(f"         - {f}")
-                    fail_count += 1
-                else:
-                    print(f"  {Colors.GREEN}[PASS]{Colors.NC} {name}")
-                    pass_count += 1
+            try:
+                mgmt_profiles = client.list_interface_mgmt_profiles(folder=folder)
+                for profile in mgmt_profiles:
+                    name = profile.get("name", "Unknown")
+                    findings = validate_mgmt_profile(profile)
+                    if findings:
+                        print(f"  {Colors.RED}[FAIL]{Colors.NC} {name}")
+                        for f in findings:
+                            print(f"         - {f}")
+                        fail_count += 1
+                    else:
+                        print(f"  {Colors.GREEN}[PASS]{Colors.NC} {name}")
+                        pass_count += 1
 
-            if not mgmt_profiles:
-                print_info("  No management profiles found")
+                if not mgmt_profiles:
+                    print_info("  No management profiles found")
+            except Exception as e:
+                if "403" in str(e):
+                    print_warning("  Requires Network Admin role in SCM (403 Forbidden)")
+                    print_info("  Use 'Audit > Firewall (CLI)' to audit interface management profiles")
+                else:
+                    print_error(f"  Failed to list profiles: {e}")
 
             # Summary
             print_section("SCM Audit Summary")
@@ -759,17 +863,94 @@ class AuditMode:
 class ConfigureMode:
     """FIPS 140-3 Profile Configuration Mode."""
 
+    # Default profile name prefix
+    DEFAULT_PREFIX = "ca-ois-fips"
+
+    # FIPS-compliant profile configurations
+    FIPS_PROFILES = {
+        "max": {
+            "ike": {
+                "encryption": ["aes-256-gcm"],
+                "hash": ["sha512"],
+                "dh_group": ["group20"],
+                "lifetime": {"hours": 8}
+            },
+            "ipsec": {
+                "esp_encryption": ["aes-256-gcm"],
+                "esp_authentication": ["sha512"],
+                "dh_group": "group20",
+                "lifetime": {"hours": 1}
+            }
+        },
+        "recommended": {
+            "ike": {
+                "encryption": ["aes-256-cbc", "aes-128-gcm"],
+                "hash": ["sha384", "sha256"],
+                "dh_group": ["group20", "group19"],
+                "lifetime": {"hours": 8}
+            },
+            "ipsec": {
+                "esp_encryption": ["aes-256-gcm", "aes-128-gcm"],
+                "esp_authentication": ["sha384", "sha256"],
+                "dh_group": "group20",
+                "lifetime": {"hours": 1}
+            }
+        },
+        "compat": {
+            "ike": {
+                "encryption": ["aes-256-cbc", "aes-256-gcm", "aes-128-cbc", "aes-128-gcm"],
+                "hash": ["sha512", "sha384", "sha256"],
+                "dh_group": ["group20", "group19", "group16", "group14"],
+                "lifetime": {"hours": 8}
+            },
+            "ipsec": {
+                "esp_encryption": ["aes-256-gcm", "aes-256-cbc", "aes-128-gcm", "aes-128-cbc"],
+                "esp_authentication": ["sha512", "sha384", "sha256"],
+                "dh_group": "group14",
+                "lifetime": {"hours": 1}
+            }
+        }
+    }
+
     def __init__(self, config_manager: ConfigManager):
         self.config = config_manager
+        self.deployment_target = None  # 'scm' or 'firewall'
 
     def run(self):
         """Run configure mode."""
         print_section("FIPS 140-3 Profile Configuration")
 
-        if not self.config.has_scm_credentials():
-            print_error("SCM credentials required for configuration mode.")
-            print_info("Run setup to configure SCM credentials.")
-            return
+        has_scm = self.config.has_scm_credentials()
+        has_fw = self.config.has_firewall_credentials()
+
+        # Check what credentials are available
+        if not has_scm and not has_fw:
+            print_error("No credentials configured.")
+            if confirm("Configure credentials now?"):
+                self._setup_credentials()
+                has_scm = self.config.has_scm_credentials()
+                has_fw = self.config.has_firewall_credentials()
+            else:
+                return
+
+        # Determine deployment target
+        if has_scm and has_fw:
+            print(f"""
+{Colors.CYAN}Deployment Target:{Colors.NC}
+You have both SCM and Firewall credentials configured.
+""")
+            target_choice = get_choice("Where do you want to deploy profiles?", [
+                "Strata Cloud Manager (deploy to SCM, push to devices)",
+                "Direct to Firewall (deploy via XML API)"
+            ])
+            self.deployment_target = 'scm' if target_choice == 1 else 'firewall'
+        elif has_scm:
+            self.deployment_target = 'scm'
+        else:
+            self.deployment_target = 'firewall'
+
+        target_name = "Strata Cloud Manager" if self.deployment_target == 'scm' else "Firewall"
+        print(f"\n{Colors.GREEN}Deployment target:{Colors.NC} {target_name}")
 
         print(f"""
 {Colors.WHITE}This mode deploys FIPS 140-3 compliant cryptographic profiles.{Colors.NC}
@@ -805,6 +986,28 @@ class ConfigureMode:
         elif choice == 5:
             self._list_profiles()
 
+    def _setup_credentials(self):
+        """Quick credential setup."""
+        choice = get_choice("Select credential type to configure:", [
+            "Strata Cloud Manager (SCM)",
+            "Direct Firewall Access"
+        ])
+
+        if choice == 1:
+            print_section("SCM Credentials")
+            client_id = get_input("Client ID")
+            client_secret = get_input("Client Secret", secret=True)
+            tsg_id = get_input("TSG ID")
+            self.config.set_scm_credentials(client_id, client_secret, tsg_id)
+            print_success("SCM credentials saved")
+        else:
+            print_section("Firewall Credentials")
+            host = get_input("Firewall IP or hostname")
+            username = get_input("Admin username")
+            password = get_input("Admin password", secret=True)
+            self.config.set_firewall_credentials(host, username, password)
+            print_success("Firewall credentials saved")
+
     def _get_client(self):
         """Get SCM client."""
         sys.path.insert(0, os.path.join(
@@ -820,13 +1023,99 @@ class ConfigureMode:
             tsg_id=creds['tsg_id']
         )
 
+    def _select_certificate(self, client, folder: str) -> str:
+        """
+        List available certificates and let user select one for TLS profiles.
+
+        Args:
+            client: SCM client instance
+            folder: Configuration folder
+
+        Returns:
+            Selected certificate name, or None if skipped
+        """
+        try:
+            print_info("Fetching available certificates...")
+            certs = client.list_certificates(folder)
+
+            if not certs:
+                print_warning("No certificates found in folder")
+                manual = get_input("Enter certificate name manually (or press Enter to skip)", required=False)
+                return manual if manual else None
+
+            print(f"\n{Colors.CYAN}Available Certificates:{Colors.NC}")
+            for i, cert in enumerate(certs, 1):
+                cert_name = cert.get('name', 'unnamed')
+                print(f"  {Colors.CYAN}[{i}]{Colors.NC} {cert_name}")
+
+            # Add option to skip or enter manually
+            print(f"  {Colors.CYAN}[{len(certs) + 1}]{Colors.NC} Enter manually")
+            print(f"  {Colors.CYAN}[0]{Colors.NC} Skip TLS profile")
+
+            while True:
+                try:
+                    choice_str = input(f"\nSelect certificate [1-{len(certs) + 1}, 0 to skip]: ").strip()
+                    if not choice_str:
+                        choice = 1  # Default to first certificate
+                    else:
+                        choice = int(choice_str)
+
+                    if choice == 0:
+                        return None
+                    elif 1 <= choice <= len(certs):
+                        selected = certs[choice - 1].get('name')
+                        print_success(f"Selected: {selected}")
+                        return selected
+                    elif choice == len(certs) + 1:
+                        manual = get_input("Enter certificate name")
+                        return manual if manual else None
+                    else:
+                        print_error(f"Please enter a number between 0 and {len(certs) + 1}")
+                except ValueError:
+                    print_error("Please enter a valid number")
+
+        except Exception as e:
+            print_warning(f"Could not list certificates: {e}")
+            manual = get_input("Enter certificate name manually (or press Enter to skip)", required=False)
+            return manual if manual else None
+
     def _deploy_all(self, tier: str):
         """Deploy all FIPS profiles."""
         print_section(f"Deploying FIPS Profiles ({tier} tier)")
 
+        # Ask for profile name prefix
+        print(f"""
+{Colors.CYAN}Profile Naming:{Colors.NC}
+Profiles will be created with a name prefix followed by the profile type.
+Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
+""")
+        name_prefix = get_input("Profile name prefix", default=self.DEFAULT_PREFIX)
+
+        # Map tier to short name
+        tier_short = {"max": "max", "recommended": "rec", "compat": "compat"}.get(tier, tier)
+
+        # Show what will be created
+        print(f"""
+{Colors.CYAN}Profiles to be created:{Colors.NC}
+  - {name_prefix}-ike-{tier_short}
+  - {name_prefix}-ipsec-{tier_short}
+  - {name_prefix}-tls-{tier_short}
+  - {name_prefix}-mgmt
+""")
+
+        # Route to appropriate deployment method
+        if self.deployment_target == 'scm':
+            self._deploy_all_scm(tier, name_prefix)
+        else:
+            self._deploy_all_firewall(tier, name_prefix)
+
+    def _deploy_all_scm(self, tier: str, name_prefix: str):
+        """Deploy all FIPS profiles via SCM."""
+        # Map tier to short name for display
+        tier_short = {"max": "max", "recommended": "rec", "compat": "compat"}.get(tier, tier)
         folder = get_input("Target folder", default="Shared")
 
-        if not confirm(f"Deploy {tier} tier profiles to '{folder}'?"):
+        if not confirm(f"Deploy profiles to SCM folder '{folder}'?"):
             print("Deployment cancelled.")
             return
 
@@ -840,12 +1129,12 @@ class ConfigureMode:
             # Deploy IKE profile
             print_info(f"Creating IKE crypto profile...")
             try:
-                client.create_fips_ike_profile(tier=tier, folder=folder)
-                print_success(f"Created fips-ike-crypto-{tier}")
+                client.create_fips_ike_profile(tier=tier, folder=folder, name_prefix=name_prefix)
+                print_success(f"Created {name_prefix}-ike-{tier_short}")
                 created += 1
             except Exception as e:
                 if "409" in str(e) or "exists" in str(e).lower():
-                    print_warning(f"fips-ike-crypto-{tier} already exists")
+                    print_warning(f"{name_prefix}-ike-{tier_short} already exists")
                     skipped += 1
                 else:
                     print_error(f"Failed: {e}")
@@ -854,31 +1143,33 @@ class ConfigureMode:
             # Deploy IPSec profile
             print_info(f"Creating IPSec crypto profile...")
             try:
-                client.create_fips_ipsec_profile(tier=tier, folder=folder)
-                print_success(f"Created fips-ipsec-crypto-{tier}")
+                client.create_fips_ipsec_profile(tier=tier, folder=folder, name_prefix=name_prefix)
+                print_success(f"Created {name_prefix}-ipsec-{tier_short}")
                 created += 1
             except Exception as e:
                 if "409" in str(e) or "exists" in str(e).lower():
-                    print_warning(f"fips-ipsec-crypto-{tier} already exists")
+                    print_warning(f"{name_prefix}-ipsec-{tier_short} already exists")
                     skipped += 1
                 else:
                     print_error(f"Failed: {e}")
                     errors += 1
 
-            # Deploy TLS profile (needs certificate name)
+            # Deploy TLS profile (needs certificate selection)
             print_info(f"Creating TLS service profile...")
-            cert_name = get_input("Certificate name for TLS profile",
-                                   default="mgmt-cert", required=False)
+            print(f"\n{Colors.CYAN}TLS Profile Configuration:{Colors.NC}")
+            print("TLS profiles require a certificate. Select from available certificates:")
+            cert_name = self._select_certificate(client, folder)
             if cert_name:
                 try:
                     client.create_fips_tls_profile(tier=tier,
                                                     certificate=cert_name,
-                                                    folder=folder)
-                    print_success(f"Created fips-ssl-tls-{tier}")
+                                                    folder=folder,
+                                                    name_prefix=name_prefix)
+                    print_success(f"Created {name_prefix}-tls-{tier_short}")
                     created += 1
                 except Exception as e:
                     if "409" in str(e) or "exists" in str(e).lower():
-                        print_warning(f"fips-ssl-tls-{tier} already exists")
+                        print_warning(f"{name_prefix}-tls-{tier_short} already exists")
                         skipped += 1
                     else:
                         print_error(f"Failed: {e}")
@@ -890,13 +1181,35 @@ class ConfigureMode:
             # Deploy management profile
             print_info(f"Creating interface management profile...")
             try:
-                client.create_fips_mgmt_profile(folder=folder)
-                print_success(f"Created fips-mgmt-profile")
+                client.create_fips_mgmt_profile(folder=folder, name_prefix=name_prefix)
+                print_success(f"Created {name_prefix}-mgmt")
                 created += 1
             except Exception as e:
                 if "409" in str(e) or "exists" in str(e).lower():
-                    print_warning("fips-mgmt-profile already exists")
+                    print_warning(f"{name_prefix}-mgmt already exists")
                     skipped += 1
+                elif "403" in str(e):
+                    # Permission issue - offer CLI fallback
+                    print_warning("SCM API returned 403 Forbidden for interface management profile")
+                    print_info("This requires Network Admin or Superuser role in SCM.")
+                    if self.config.has_firewall_credentials():
+                        if confirm("Deploy interface management profile via CLI (direct to firewall) instead?"):
+                            mgmt_result = self._deploy_mgmt_via_cli(name_prefix)
+                            if mgmt_result == 'created':
+                                print_success(f"Created {name_prefix}-mgmt via CLI")
+                                created += 1
+                            elif mgmt_result == 'exists':
+                                print_warning(f"{name_prefix}-mgmt already exists on firewall")
+                                skipped += 1
+                            else:
+                                print_error(f"CLI deployment failed: {mgmt_result}")
+                                errors += 1
+                        else:
+                            print_info("Skipped interface management profile")
+                            skipped += 1
+                    else:
+                        print_info("Configure firewall credentials to use CLI fallback")
+                        skipped += 1
                 else:
                     print_error(f"Failed: {e}")
                     errors += 1
@@ -921,6 +1234,288 @@ class ConfigureMode:
         except Exception as e:
             print_error(f"Deployment failed: {e}")
 
+    def _deploy_all_firewall(self, tier: str, name_prefix: str):
+        """Deploy all FIPS profiles directly to firewall via XML API."""
+        # Map tier to short name for display
+        tier_short = {"max": "max", "recommended": "rec", "compat": "compat"}.get(tier, tier)
+        creds = self.config.get_firewall_credentials()
+
+        if not confirm(f"Deploy profiles to firewall {creds['host']}?"):
+            print("Deployment cancelled.")
+            return
+
+        try:
+            import requests
+            from requests.packages.urllib3.exceptions import InsecureRequestWarning
+            requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+            import xml.etree.ElementTree as ET
+
+            base_url = f"https://{creds['host']}/api/"
+
+            # Authenticate
+            print_info(f"Connecting to {creds['host']}...")
+            response = requests.get(
+                base_url,
+                params={
+                    'type': 'keygen',
+                    'user': creds['username'],
+                    'password': creds['password']
+                },
+                verify=False,
+                timeout=30
+            )
+
+            root = ET.fromstring(response.text)
+            if root.get('status') != 'success':
+                print_error("Failed to authenticate to firewall")
+                return
+
+            api_key = root.find('.//key').text
+            print_success("Connected to firewall")
+
+            created = 0
+            skipped = 0
+            errors = 0
+
+            profile_config = self.FIPS_PROFILES[tier]
+
+            # Deploy IKE crypto profile
+            print_info("Creating IKE crypto profile...")
+            ike_name = f"{name_prefix}-ike-{tier_short}"
+            ike_result = self._create_ike_profile_firewall(
+                base_url, api_key, ike_name, profile_config['ike']
+            )
+            if ike_result == 'created':
+                print_success(f"Created {ike_name}")
+                created += 1
+            elif ike_result == 'exists':
+                print_warning(f"{ike_name} already exists")
+                skipped += 1
+            else:
+                print_error(f"Failed to create {ike_name}: {ike_result}")
+                errors += 1
+
+            # Deploy IPSec crypto profile
+            print_info("Creating IPSec crypto profile...")
+            ipsec_name = f"{name_prefix}-ipsec-{tier_short}"
+            ipsec_result = self._create_ipsec_profile_firewall(
+                base_url, api_key, ipsec_name, profile_config['ipsec']
+            )
+            if ipsec_result == 'created':
+                print_success(f"Created {ipsec_name}")
+                created += 1
+            elif ipsec_result == 'exists':
+                print_warning(f"{ipsec_name} already exists")
+                skipped += 1
+            else:
+                print_error(f"Failed to create {ipsec_name}: {ipsec_result}")
+                errors += 1
+
+            # Deploy management profile
+            print_info("Creating interface management profile...")
+            mgmt_name = f"{name_prefix}-mgmt"
+            mgmt_result = self._create_mgmt_profile_firewall(base_url, api_key, mgmt_name)
+            if mgmt_result == 'created':
+                print_success(f"Created {mgmt_name}")
+                created += 1
+            elif mgmt_result == 'exists':
+                print_warning(f"{mgmt_name} already exists")
+                skipped += 1
+            else:
+                print_error(f"Failed to create {mgmt_name}: {mgmt_result}")
+                errors += 1
+
+            # Summary
+            print_section("Deployment Summary")
+            print(f"  {Colors.GREEN}Created:{Colors.NC}  {created}")
+            print(f"  {Colors.YELLOW}Skipped:{Colors.NC}  {skipped}")
+            print(f"  {Colors.RED}Errors:{Colors.NC}   {errors}")
+
+            # Note: TLS profiles require certificate which may not exist
+            print(f"\n{Colors.YELLOW}Note:{Colors.NC} SSL/TLS profiles require a certificate to be configured.")
+            print("Use the specific profile deployment option to create TLS profiles.")
+
+            if created > 0 and confirm("\nCommit changes to firewall?"):
+                print_info("Committing changes...")
+                commit_response = requests.post(
+                    base_url,
+                    data={
+                        'type': 'commit',
+                        'cmd': '<commit></commit>',
+                        'key': api_key
+                    },
+                    verify=False,
+                    timeout=120
+                )
+                commit_root = ET.fromstring(commit_response.text)
+                if commit_root.get('status') == 'success':
+                    job_id = commit_root.find('.//job')
+                    if job_id is not None:
+                        print_success(f"Commit initiated (Job ID: {job_id.text})")
+                    else:
+                        print_success("Commit successful")
+                else:
+                    print_error("Commit failed")
+
+        except ImportError:
+            print_error("Missing dependency: requests")
+            print_info("Run: pip install requests")
+        except Exception as e:
+            print_error(f"Deployment failed: {e}")
+
+    def _create_ike_profile_firewall(self, base_url: str, api_key: str,
+                                      name: str, config: dict) -> str:
+        """Create IKE crypto profile on firewall."""
+        import requests
+        import xml.etree.ElementTree as ET
+
+        xpath = f"/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ike-crypto-profiles/entry[@name='{name}']"
+
+        # Check if exists
+        check = requests.post(base_url, data={
+            'type': 'config', 'action': 'get', 'xpath': xpath, 'key': api_key
+        }, verify=False, timeout=30)
+        if ET.fromstring(check.text).find('.//entry') is not None:
+            return 'exists'
+
+        # Build XML element
+        encryption = ''.join(f'<member>{e}</member>' for e in config['encryption'])
+        hash_alg = ''.join(f'<member>{h}</member>' for h in config['hash'])
+        dh_group = ''.join(f'<member>{g}</member>' for g in config['dh_group'])
+
+        element = f"""
+        <entry name="{name}">
+            <encryption>{encryption}</encryption>
+            <hash>{hash_alg}</hash>
+            <dh-group>{dh_group}</dh-group>
+            <lifetime><hours>{config['lifetime']['hours']}</hours></lifetime>
+        </entry>
+        """
+
+        response = requests.post(base_url, data={
+            'type': 'config', 'action': 'set', 'xpath': xpath, 'element': element, 'key': api_key
+        }, verify=False, timeout=30)
+
+        root = ET.fromstring(response.text)
+        if root.get('status') == 'success':
+            return 'created'
+        else:
+            msg = root.find('.//msg')
+            return msg.text if msg is not None else 'Unknown error'
+
+    def _create_ipsec_profile_firewall(self, base_url: str, api_key: str,
+                                        name: str, config: dict) -> str:
+        """Create IPSec crypto profile on firewall."""
+        import requests
+        import xml.etree.ElementTree as ET
+
+        xpath = f"/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ipsec-crypto-profiles/entry[@name='{name}']"
+
+        # Check if exists
+        check = requests.post(base_url, data={
+            'type': 'config', 'action': 'get', 'xpath': xpath, 'key': api_key
+        }, verify=False, timeout=30)
+        if ET.fromstring(check.text).find('.//entry') is not None:
+            return 'exists'
+
+        # Build XML element
+        encryption = ''.join(f'<member>{e}</member>' for e in config['esp_encryption'])
+        authentication = ''.join(f'<member>{a}</member>' for a in config['esp_authentication'])
+
+        element = f"""
+        <entry name="{name}">
+            <esp>
+                <encryption>{encryption}</encryption>
+                <authentication>{authentication}</authentication>
+            </esp>
+            <dh-group>{config['dh_group']}</dh-group>
+            <lifetime><hours>{config['lifetime']['hours']}</hours></lifetime>
+        </entry>
+        """
+
+        response = requests.post(base_url, data={
+            'type': 'config', 'action': 'set', 'xpath': xpath, 'element': element, 'key': api_key
+        }, verify=False, timeout=30)
+
+        root = ET.fromstring(response.text)
+        if root.get('status') == 'success':
+            return 'created'
+        else:
+            msg = root.find('.//msg')
+            return msg.text if msg is not None else 'Unknown error'
+
+    def _create_mgmt_profile_firewall(self, base_url: str, api_key: str, name: str) -> str:
+        """Create interface management profile on firewall."""
+        import requests
+        import xml.etree.ElementTree as ET
+
+        xpath = f"/config/devices/entry[@name='localhost.localdomain']/network/profiles/interface-management-profile/entry[@name='{name}']"
+
+        # Check if exists
+        check = requests.post(base_url, data={
+            'type': 'config', 'action': 'get', 'xpath': xpath, 'key': api_key
+        }, verify=False, timeout=30)
+        if ET.fromstring(check.text).find('.//entry') is not None:
+            return 'exists'
+
+        # FIPS-compliant management profile (HTTPS and SSH only, no HTTP/Telnet)
+        element = f"""
+        <entry name="{name}">
+            <https>yes</https>
+            <ssh>yes</ssh>
+            <ping>yes</ping>
+        </entry>
+        """
+
+        response = requests.post(base_url, data={
+            'type': 'config', 'action': 'set', 'xpath': xpath, 'element': element, 'key': api_key
+        }, verify=False, timeout=30)
+
+        root = ET.fromstring(response.text)
+        if root.get('status') == 'success':
+            return 'created'
+        else:
+            msg = root.find('.//msg')
+            return msg.text if msg is not None else 'Unknown error'
+
+    def _deploy_mgmt_via_cli(self, name_prefix: str) -> str:
+        """Deploy interface management profile via CLI when SCM returns 403.
+
+        This is used as a fallback when the SCM service account lacks
+        Network Admin role (required for interface management profiles).
+        Most users have superuser access on the firewall itself.
+        """
+        import requests
+        from requests.packages.urllib3.exceptions import InsecureRequestWarning
+        requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+        import xml.etree.ElementTree as ET
+
+        creds = self.config.get_firewall_credentials()
+        base_url = f"https://{creds['host']}/api/"
+
+        # Authenticate to get API key
+        try:
+            response = requests.get(
+                base_url,
+                params={
+                    'type': 'keygen',
+                    'user': creds['username'],
+                    'password': creds['password']
+                },
+                verify=False,
+                timeout=30
+            )
+            root = ET.fromstring(response.text)
+            if root.get('status') != 'success':
+                return 'Authentication failed'
+            api_key = root.find('.//key').text
+        except Exception as e:
+            return f'Connection failed: {e}'
+
+        # Use existing method to create the profile
+        mgmt_name = f"{name_prefix}-mgmt"
+        return self._create_mgmt_profile_firewall(base_url, api_key, mgmt_name)
+
     def _deploy_specific(self):
         """Deploy specific profile type."""
         choice = get_choice("Select profile type:", [
@@ -938,25 +1533,33 @@ class ConfigureMode:
 
         tier_map = {1: "max", 2: "recommended", 3: "compat"}
         tier = tier_map[tier_choice]
+        tier_short = {"max": "max", "recommended": "rec", "compat": "compat"}.get(tier, tier)
+
+        name_prefix = get_input("Profile name prefix", default="ca-ois-fips")
         folder = get_input("Target folder", default="Shared")
 
         try:
             client = self._get_client()
 
             if choice == 1:
-                client.create_fips_ike_profile(tier=tier, folder=folder)
-                print_success(f"Created fips-ike-crypto-{tier}")
+                client.create_fips_ike_profile(tier=tier, folder=folder, name_prefix=name_prefix)
+                print_success(f"Created {name_prefix}-ike-{tier_short}")
             elif choice == 2:
-                client.create_fips_ipsec_profile(tier=tier, folder=folder)
-                print_success(f"Created fips-ipsec-crypto-{tier}")
+                client.create_fips_ipsec_profile(tier=tier, folder=folder, name_prefix=name_prefix)
+                print_success(f"Created {name_prefix}-ipsec-{tier_short}")
             elif choice == 3:
-                cert = get_input("Certificate name", default="mgmt-cert")
-                client.create_fips_tls_profile(tier=tier, certificate=cert,
-                                                folder=folder)
-                print_success(f"Created fips-ssl-tls-{tier}")
+                print(f"\n{Colors.CYAN}TLS Profile Configuration:{Colors.NC}")
+                print("TLS profiles require a certificate. Select from available certificates:")
+                cert = self._select_certificate(client, folder)
+                if cert:
+                    client.create_fips_tls_profile(tier=tier, certificate=cert,
+                                                    folder=folder, name_prefix=name_prefix)
+                    print_success(f"Created {name_prefix}-tls-{tier_short}")
+                else:
+                    print_info("Skipped TLS profile (no certificate selected)")
             elif choice == 4:
-                client.create_fips_mgmt_profile(folder=folder)
-                print_success("Created fips-mgmt-profile")
+                client.create_fips_mgmt_profile(folder=folder, name_prefix=name_prefix)
+                print_success(f"Created {name_prefix}-mgmt")
 
         except Exception as e:
             print_error(f"Failed: {e}")
@@ -2989,6 +3592,610 @@ Generated by FIPS 140-3 Compliance Toolkit (Independent Open-Source Tool)
             print(f"[DEBUG] Traceback:\n{traceback.format_exc()}")
 
 
+class CleanupMode:
+    """FIPS Profile Cleanup Mode - Remove deployed FIPS profiles."""
+
+    # Default profile name prefix
+    DEFAULT_PREFIX = "ca-ois-fips"
+
+    def __init__(self, config_manager: ConfigManager):
+        self.config = config_manager
+
+    def run(self):
+        """Run cleanup mode."""
+        print_section("FIPS Profile Cleanup")
+
+        print(f"""
+{Colors.WHITE}Remove FIPS 140-3 profiles for re-testing.{Colors.NC}
+
+{Colors.YELLOW}This will delete profiles with the specified name prefix:{Colors.NC}
+  - IKE Crypto Profiles (3)
+  - IPSec Crypto Profiles (4)
+  - SSL/TLS Service Profiles (3)
+  - Interface Management Profiles (3)
+
+{Colors.RED}WARNING: This operation cannot be undone!{Colors.NC}
+""")
+
+        # Determine available cleanup targets
+        has_scm = self.config.has_scm_credentials()
+        has_fw = self.config.has_firewall_credentials()
+
+        if not has_scm and not has_fw:
+            print_error("No credentials configured. Please configure either SCM or Firewall credentials.")
+            if confirm("Configure credentials now?"):
+                self._setup_credentials()
+            else:
+                return
+            # Re-check after setup
+            has_scm = self.config.has_scm_credentials()
+            has_fw = self.config.has_firewall_credentials()
+            if not has_scm and not has_fw:
+                return
+
+        # Show cleanup target options
+        print(f"{Colors.CYAN}Select cleanup target:{Colors.NC}")
+        options = []
+
+        if has_scm:
+            options.append(("SCM (Strata Cloud Manager)", "scm"))
+        if has_fw:
+            options.append(("Firewall (Direct)", "firewall"))
+
+        if len(options) == 1:
+            # Only one option available
+            target = options[0][1]
+            print(f"  Using: {options[0][0]}")
+        else:
+            for i, (label, _) in enumerate(options, 1):
+                print(f"  {Colors.CYAN}[{i}]{Colors.NC} {label}")
+
+            choice = get_choice("", [opt[0] for opt in options], default=1)
+            target = options[choice - 1][1]
+
+        if target == "scm":
+            self._cleanup_scm()
+        else:
+            self._cleanup_firewall()
+
+    def _setup_credentials(self):
+        """Quick setup for credentials."""
+        print(f"""
+{Colors.CYAN}Which credentials do you want to configure?{Colors.NC}
+  {Colors.CYAN}[1]{Colors.NC} SCM (Strata Cloud Manager)
+  {Colors.CYAN}[2]{Colors.NC} Firewall (Direct)
+""")
+        choice = get_choice("", ["SCM", "Firewall"], default=1)
+
+        if choice == 1:
+            self._setup_scm_credentials()
+        else:
+            self._setup_firewall_credentials()
+
+    def _setup_scm_credentials(self):
+        """Quick setup for SCM credentials."""
+        print_section("SCM Credentials")
+        print(f"""
+{Colors.YELLOW}Role Requirements:{Colors.NC}
+  - Auditor: For audit/read operations
+  - Security Admin: For creating IKE, IPSec, TLS profiles
+  - Network Admin: {Colors.RED}Required{Colors.NC} for interface management profiles
+    (Without Network Admin, use CLI fallback to deploy to firewall)
+""")
+        client_id = get_input("Client ID")
+        client_secret = get_input("Client Secret", secret=True)
+        tsg_id = get_input("TSG ID")
+        self.config.set_scm_credentials(client_id, client_secret, tsg_id)
+        print_success("SCM credentials saved")
+
+    def _setup_firewall_credentials(self):
+        """Quick setup for firewall credentials."""
+        print_section("Firewall Credentials")
+        host = get_input("Firewall IP or hostname")
+        username = get_input("Admin username")
+        password = get_input("Admin password", secret=True)
+        self.config.set_firewall_credentials(host, username, password)
+        print_success("Firewall credentials saved")
+
+    def _get_profile_names(self, prefix: str) -> dict:
+        """Generate all profile names based on prefix."""
+        return {
+            'ike': [
+                f"{prefix}-ike-max",
+                f"{prefix}-ike-rec",
+                f"{prefix}-ike-compat",
+            ],
+            'ipsec': [
+                f"{prefix}-ipsec-max",
+                f"{prefix}-ipsec-rec",
+                f"{prefix}-ipsec-compat",
+                f"{prefix}-ipsec-gp",
+            ],
+            'ssl_tls': [
+                f"{prefix}-tls-max",
+                f"{prefix}-tls-rec",
+                f"{prefix}-tls-tls1.3",
+            ],
+            'mgmt': [
+                f"{prefix}-mgmt",
+                f"{prefix}-https",
+                f"{prefix}-mon",
+            ]
+        }
+
+    def _cleanup_scm(self):
+        """Cleanup FIPS profiles from SCM."""
+        creds = self.config.get_scm_credentials()
+
+        # Ask for profile prefix
+        print(f"""
+{Colors.CYAN}Profile Naming:{Colors.NC}
+Enter the profile name prefix used when profiles were created.
+""")
+        name_prefix = get_input("Profile name prefix", default=self.DEFAULT_PREFIX)
+
+        # Ask for folder
+        folder = get_input("SCM folder", default="Shared")
+
+        profiles = self._get_profile_names(name_prefix)
+        total_profiles = sum(len(p) for p in profiles.values())
+
+        # Show what will be deleted
+        print(f"""
+{Colors.CYAN}Profiles to be deleted from SCM ({total_profiles} total):{Colors.NC}
+  IKE:     {', '.join(profiles['ike'])}
+  IPSec:   {', '.join(profiles['ipsec'])}
+  SSL/TLS: {', '.join(profiles['ssl_tls'])}
+  Mgmt:    {', '.join(profiles['mgmt'])}
+
+{Colors.CYAN}Folder:{Colors.NC} {folder}
+""")
+
+        # Dry run first?
+        dry_run = confirm("Perform dry-run first (show what would be deleted)?", default=True)
+
+        if not dry_run:
+            if not confirm(f"{Colors.RED}Delete these profiles from SCM?{Colors.NC}", default=False):
+                print("Cleanup cancelled.")
+                return
+
+        try:
+            # Add SCM client path
+            scm_path = Path(__file__).parent / "09-scm-api-toolkit" / "06-python-sdk"
+            if scm_path.exists():
+                import sys
+                sys.path.insert(0, str(scm_path))
+
+            from scm_client import SCMClient
+
+            # Create SCM client
+            print_info("Connecting to SCM...")
+            client = SCMClient(
+                client_id=creds['client_id'],
+                client_secret=creds['client_secret'],
+                tsg_id=creds['tsg_id']
+            )
+            print_success("Connected to SCM")
+
+            # Track stats
+            deleted = 0
+            not_found = 0
+            errors = 0
+
+            # Profile type handlers
+            profile_handlers = {
+                'ike': {
+                    'name': 'IKE Crypto',
+                    'list_fn': lambda: client.list_ike_crypto_profiles(folder),
+                    'delete_fn': client.delete_ike_crypto_profile
+                },
+                'ipsec': {
+                    'name': 'IPSec Crypto',
+                    'list_fn': lambda: client.list_ipsec_crypto_profiles(folder),
+                    'delete_fn': client.delete_ipsec_crypto_profile
+                },
+                'ssl_tls': {
+                    'name': 'SSL/TLS Service',
+                    'list_fn': lambda: client.list_tls_service_profiles(folder),
+                    'delete_fn': client.delete_tls_service_profile
+                },
+                'mgmt': {
+                    'name': 'Interface Management',
+                    'list_fn': lambda: client.list_interface_mgmt_profiles(folder),
+                    'delete_fn': client.delete_interface_mgmt_profile
+                }
+            }
+
+            # Process each profile type
+            mgmt_403_shown = False
+            for profile_type, profile_names in profiles.items():
+                handler = profile_handlers[profile_type]
+                print(f"\n{Colors.CYAN}--- {handler['name']} Profiles ---{Colors.NC}")
+
+                # Get existing profiles
+                try:
+                    existing = handler['list_fn']()
+                    existing_map = {p.get('name'): p.get('id') for p in existing}
+                except Exception as e:
+                    if profile_type == 'mgmt' and "403" in str(e):
+                        if not mgmt_403_shown:
+                            print_warning("Interface management requires Network Admin role in SCM")
+                            print_info("Use 'Cleanup > Firewall (CLI)' option instead")
+                            mgmt_403_shown = True
+                    else:
+                        print_error(f"Failed to list profiles: {e}")
+                    continue
+
+                for profile_name in profile_names:
+                    profile_id = existing_map.get(profile_name)
+
+                    if not profile_id:
+                        print(f"{Colors.CYAN}[SKIP]{Colors.NC} {profile_name} - not found")
+                        not_found += 1
+                        continue
+
+                    if dry_run:
+                        print(f"{Colors.MAGENTA}[DRY-RUN]{Colors.NC} Would delete: {profile_name} (ID: {profile_id})")
+                        deleted += 1
+                    else:
+                        try:
+                            handler['delete_fn'](profile_id)
+                            print(f"{Colors.GREEN}[DELETED]{Colors.NC} {profile_name}")
+                            deleted += 1
+                        except Exception as e:
+                            if profile_type == 'mgmt' and "403" in str(e):
+                                if not mgmt_403_shown:
+                                    print_warning("Interface management delete requires Network Admin role")
+                                    print_info("Use 'Cleanup > Firewall (CLI)' option instead")
+                                    mgmt_403_shown = True
+                            else:
+                                print(f"{Colors.RED}[ERROR]{Colors.NC} {profile_name}: {e}")
+                            errors += 1
+
+            # Summary
+            print_section("Cleanup Summary")
+            print(f"  {Colors.GREEN}Deleted:{Colors.NC}     {deleted}")
+            print(f"  {Colors.CYAN}Not found:{Colors.NC}   {not_found}")
+            print(f"  {Colors.RED}Errors:{Colors.NC}      {errors}")
+
+            if dry_run:
+                print(f"\n{Colors.MAGENTA}Dry-run complete. No changes were made.{Colors.NC}")
+                if deleted > 0 and confirm("Proceed with actual deletion?", default=False):
+                    # Re-run without dry-run
+                    self._cleanup_scm_execute(client, name_prefix, folder)
+            elif deleted > 0 and errors == 0:
+                # Push changes
+                if confirm("Push changes to devices?", default=True):
+                    print_info("Pushing configuration...")
+                    try:
+                        result = client.push_config(folders=[folder], description="FIPS profile cleanup")
+                        if result.get('success') or result.get('job_id'):
+                            job_id = result.get('job_id', 'N/A')
+                            print_success(f"Push initiated (Job ID: {job_id})")
+                        else:
+                            print_success("Push initiated")
+                    except Exception as e:
+                        print_warning(f"Push may have failed: {e}")
+                        print_info("Please verify in SCM console")
+
+        except ImportError as e:
+            print_error(f"Missing dependency: {e}")
+            print_info("Make sure scm_client.py is in 09-scm-api-toolkit/06-python-sdk/")
+        except Exception as e:
+            print_error(f"Cleanup failed: {e}")
+
+    def _cleanup_scm_execute(self, client, name_prefix: str, folder: str):
+        """Execute SCM cleanup without dry-run (called after dry-run confirmation)."""
+        profiles = self._get_profile_names(name_prefix)
+        deleted = 0
+        errors = 0
+
+        profile_handlers = {
+            'ike': {
+                'list_fn': lambda: client.list_ike_crypto_profiles(folder),
+                'delete_fn': client.delete_ike_crypto_profile
+            },
+            'ipsec': {
+                'list_fn': lambda: client.list_ipsec_crypto_profiles(folder),
+                'delete_fn': client.delete_ipsec_crypto_profile
+            },
+            'ssl_tls': {
+                'list_fn': lambda: client.list_tls_service_profiles(folder),
+                'delete_fn': client.delete_tls_service_profile
+            },
+            'mgmt': {
+                'list_fn': lambda: client.list_interface_mgmt_profiles(folder),
+                'delete_fn': client.delete_interface_mgmt_profile
+            }
+        }
+
+        print_info("Deleting profiles...")
+
+        mgmt_403_shown = False
+        for profile_type, profile_names in profiles.items():
+            handler = profile_handlers[profile_type]
+
+            try:
+                existing = handler['list_fn']()
+                existing_map = {p.get('name'): p.get('id') for p in existing}
+            except Exception as e:
+                if profile_type == 'mgmt' and "403" in str(e):
+                    if not mgmt_403_shown:
+                        print_warning("Interface management profiles require Network Admin role in SCM")
+                        print_info("Use firewall cleanup option for interface management profiles")
+                        mgmt_403_shown = True
+                continue
+
+            for profile_name in profile_names:
+                profile_id = existing_map.get(profile_name)
+                if not profile_id:
+                    continue
+
+                try:
+                    handler['delete_fn'](profile_id)
+                    print(f"{Colors.GREEN}[DELETED]{Colors.NC} {profile_name}")
+                    deleted += 1
+                except Exception as e:
+                    if profile_type == 'mgmt' and "403" in str(e):
+                        if not mgmt_403_shown:
+                            print_warning("Interface management delete requires Network Admin role")
+                            print_info("Use firewall cleanup option for interface management profiles")
+                            mgmt_403_shown = True
+                    else:
+                        print(f"{Colors.RED}[ERROR]{Colors.NC} {profile_name}")
+                    errors += 1
+
+        print(f"\n{Colors.GREEN}Deleted:{Colors.NC} {deleted}  {Colors.RED}Errors:{Colors.NC} {errors}")
+
+        if deleted > 0 and errors == 0:
+            if confirm("Push changes to devices?", default=True):
+                try:
+                    result = client.push_config(folders=[folder], description="FIPS profile cleanup")
+                    if result.get('success') or result.get('job_id'):
+                        print_success("Push initiated")
+                    else:
+                        print_success("Push initiated")
+                except Exception as e:
+                    print_warning(f"Push may have failed: {e}")
+
+    def _cleanup_firewall(self):
+        """Cleanup FIPS profiles from firewall."""
+        creds = self.config.get_firewall_credentials()
+
+        # Ask for profile prefix
+        print(f"""
+{Colors.CYAN}Profile Naming:{Colors.NC}
+Enter the profile name prefix used when profiles were created.
+""")
+        name_prefix = get_input("Profile name prefix", default=self.DEFAULT_PREFIX)
+
+        profiles = self._get_profile_names(name_prefix)
+        total_profiles = sum(len(p) for p in profiles.values())
+
+        # Show what will be deleted
+        print(f"""
+{Colors.CYAN}Profiles to be deleted ({total_profiles} total):{Colors.NC}
+  IKE:     {', '.join(profiles['ike'])}
+  IPSec:   {', '.join(profiles['ipsec'])}
+  SSL/TLS: {', '.join(profiles['ssl_tls'])}
+  Mgmt:    {', '.join(profiles['mgmt'])}
+""")
+
+        # Dry run first?
+        dry_run = confirm("Perform dry-run first (show what would be deleted)?", default=True)
+
+        if not dry_run:
+            if not confirm(f"{Colors.RED}Delete these profiles from {creds['host']}?{Colors.NC}", default=False):
+                print("Cleanup cancelled.")
+                return
+
+        try:
+            import requests
+            from requests.packages.urllib3.exceptions import InsecureRequestWarning
+            requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+            import xml.etree.ElementTree as ET
+
+            base_url = f"https://{creds['host']}/api/"
+
+            # Authenticate
+            print_info(f"Connecting to {creds['host']}...")
+            response = requests.get(
+                base_url,
+                params={
+                    'type': 'keygen',
+                    'user': creds['username'],
+                    'password': creds['password']
+                },
+                verify=False,
+                timeout=30
+            )
+
+            root = ET.fromstring(response.text)
+            if root.get('status') != 'success':
+                print_error("Failed to authenticate to firewall")
+                return
+
+            api_key = root.find('.//key').text
+            print_success("Connected to firewall")
+
+            # Track stats
+            deleted = 0
+            not_found = 0
+            errors = 0
+
+            # XPath templates for each profile type
+            xpath_templates = {
+                'ike': "/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ike-crypto-profiles/entry[@name='{name}']",
+                'ipsec': "/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ipsec-crypto-profiles/entry[@name='{name}']",
+                'ssl_tls': "/config/shared/ssl-tls-service-profile/entry[@name='{name}']",
+                'mgmt': "/config/devices/entry[@name='localhost.localdomain']/network/profiles/interface-management-profile/entry[@name='{name}']"
+            }
+
+            type_names = {
+                'ike': 'IKE Crypto',
+                'ipsec': 'IPSec Crypto',
+                'ssl_tls': 'SSL/TLS Service',
+                'mgmt': 'Interface Management'
+            }
+
+            # Delete each profile type
+            for profile_type, profile_list in profiles.items():
+                print(f"\n{Colors.CYAN}--- {type_names[profile_type]} Profiles ---{Colors.NC}")
+
+                for profile_name in profile_list:
+                    xpath = xpath_templates[profile_type].format(name=profile_name)
+
+                    # Check if exists
+                    check_response = requests.post(
+                        base_url,
+                        data={
+                            'type': 'config',
+                            'action': 'get',
+                            'xpath': xpath,
+                            'key': api_key
+                        },
+                        verify=False,
+                        timeout=30
+                    )
+
+                    check_root = ET.fromstring(check_response.text)
+                    exists = check_root.get('status') == 'success' and check_root.find('.//entry') is not None
+
+                    if not exists:
+                        print(f"{Colors.CYAN}[SKIP]{Colors.NC} {profile_name} - not found")
+                        not_found += 1
+                        continue
+
+                    if dry_run:
+                        print(f"{Colors.MAGENTA}[DRY-RUN]{Colors.NC} Would delete: {profile_name}")
+                        deleted += 1
+                    else:
+                        # Delete the profile
+                        del_response = requests.post(
+                            base_url,
+                            data={
+                                'type': 'config',
+                                'action': 'delete',
+                                'xpath': xpath,
+                                'key': api_key
+                            },
+                            verify=False,
+                            timeout=30
+                        )
+
+                        del_root = ET.fromstring(del_response.text)
+                        if del_root.get('status') == 'success':
+                            print(f"{Colors.GREEN}[DELETED]{Colors.NC} {profile_name}")
+                            deleted += 1
+                        else:
+                            msg = del_root.find('.//msg')
+                            error_msg = msg.text if msg is not None else "Unknown error"
+                            print(f"{Colors.RED}[ERROR]{Colors.NC} {profile_name}: {error_msg}")
+                            errors += 1
+
+            # Summary
+            print_section("Cleanup Summary")
+            print(f"  {Colors.GREEN}Deleted:{Colors.NC}     {deleted}")
+            print(f"  {Colors.CYAN}Not found:{Colors.NC}   {not_found}")
+            print(f"  {Colors.RED}Errors:{Colors.NC}      {errors}")
+
+            if dry_run:
+                print(f"\n{Colors.MAGENTA}Dry-run complete. No changes were made.{Colors.NC}")
+                if deleted > 0 and confirm("Proceed with actual deletion?", default=False):
+                    # Re-run without dry-run
+                    self._cleanup_firewall_execute(creds, name_prefix, api_key, base_url)
+            elif deleted > 0 and errors == 0:
+                # Commit changes
+                if confirm("Commit changes to firewall?", default=True):
+                    print_info("Committing changes...")
+                    commit_response = requests.post(
+                        base_url,
+                        data={
+                            'type': 'commit',
+                            'cmd': '<commit></commit>',
+                            'key': api_key
+                        },
+                        verify=False,
+                        timeout=120
+                    )
+                    commit_root = ET.fromstring(commit_response.text)
+                    if commit_root.get('status') == 'success':
+                        job_id = commit_root.find('.//job')
+                        if job_id is not None:
+                            print_success(f"Commit initiated (Job ID: {job_id.text})")
+                        else:
+                            print_success("Commit successful")
+                    else:
+                        print_error("Commit failed")
+
+        except ImportError:
+            print_error("Missing dependency: requests")
+            print_info("Run: pip install requests")
+        except Exception as e:
+            print_error(f"Cleanup failed: {e}")
+
+    def _cleanup_firewall_execute(self, creds, name_prefix, api_key, base_url):
+        """Execute cleanup without dry-run (called after dry-run confirmation)."""
+        import requests
+        import xml.etree.ElementTree as ET
+
+        profiles = self._get_profile_names(name_prefix)
+        deleted = 0
+        errors = 0
+
+        xpath_templates = {
+            'ike': "/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ike-crypto-profiles/entry[@name='{name}']",
+            'ipsec': "/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ipsec-crypto-profiles/entry[@name='{name}']",
+            'ssl_tls': "/config/shared/ssl-tls-service-profile/entry[@name='{name}']",
+            'mgmt': "/config/devices/entry[@name='localhost.localdomain']/network/profiles/interface-management-profile/entry[@name='{name}']"
+        }
+
+        print_info("Deleting profiles...")
+
+        for profile_type, profile_list in profiles.items():
+            for profile_name in profile_list:
+                xpath = xpath_templates[profile_type].format(name=profile_name)
+
+                # Check if exists first
+                check_response = requests.post(
+                    base_url,
+                    data={'type': 'config', 'action': 'get', 'xpath': xpath, 'key': api_key},
+                    verify=False, timeout=30
+                )
+                check_root = ET.fromstring(check_response.text)
+                if check_root.get('status') != 'success' or check_root.find('.//entry') is None:
+                    continue
+
+                # Delete
+                del_response = requests.post(
+                    base_url,
+                    data={'type': 'config', 'action': 'delete', 'xpath': xpath, 'key': api_key},
+                    verify=False, timeout=30
+                )
+                del_root = ET.fromstring(del_response.text)
+                if del_root.get('status') == 'success':
+                    print(f"{Colors.GREEN}[DELETED]{Colors.NC} {profile_name}")
+                    deleted += 1
+                else:
+                    print(f"{Colors.RED}[ERROR]{Colors.NC} {profile_name}")
+                    errors += 1
+
+        print(f"\n{Colors.GREEN}Deleted:{Colors.NC} {deleted}  {Colors.RED}Errors:{Colors.NC} {errors}")
+
+        if deleted > 0 and errors == 0:
+            if confirm("Commit changes?", default=True):
+                commit_response = requests.post(
+                    base_url,
+                    data={'type': 'commit', 'cmd': '<commit></commit>', 'key': api_key},
+                    verify=False, timeout=120
+                )
+                commit_root = ET.fromstring(commit_response.text)
+                if commit_root.get('status') == 'success':
+                    print_success("Commit successful")
+                else:
+                    print_error("Commit failed")
+
+
 def main_menu(config_manager: ConfigManager):
     """Display main interactive menu."""
     first_run = True
@@ -3001,27 +4208,33 @@ def main_menu(config_manager: ConfigManager):
         print(f"{Colors.WHITE}Credential Status:{Colors.NC}")
         if config_manager.has_scm_credentials():
             scm_creds = config_manager.get_scm_credentials()
-            print(f"  SCM: {Colors.GREEN}Configured{Colors.NC} ({scm_creds.get('client_id', '')[:30]}...)")
+            scm_source = config_manager.get_credential_source('scm')
+            source_label = f"[{scm_source}]" if scm_source == 'env' else ""
+            print(f"  SCM: {Colors.GREEN}Configured{Colors.NC} {source_label} ({scm_creds.get('client_id', '')[:30]}...)")
         else:
             print(f"  SCM: {Colors.YELLOW}Not configured{Colors.NC}")
 
         if config_manager.has_firewall_credentials():
             fw_creds = config_manager.get_firewall_credentials()
-            print(f"  Firewall: {Colors.GREEN}Configured{Colors.NC} ({fw_creds.get('host', '')})")
+            fw_source = config_manager.get_credential_source('firewall')
+            source_label = f"[{fw_source}]" if fw_source == 'env' else ""
+            print(f"  Firewall: {Colors.GREEN}Configured{Colors.NC} {source_label} ({fw_creds.get('host', '')})")
         else:
             print(f"  Firewall: {Colors.YELLOW}Not configured{Colors.NC}")
 
         print(f"\n{Colors.WHITE}Select an option:{Colors.NC}")
         print(f"  {Colors.CYAN}[1]{Colors.NC} Audit      - Validate configurations for FIPS compliance")
         print(f"  {Colors.CYAN}[2]{Colors.NC} Configure  - Deploy FIPS-compliant profiles")
-        print(f"  {Colors.CYAN}[3]{Colors.NC} Report     - Generate compliance reports")
-        print(f"  {Colors.CYAN}[4]{Colors.NC} Setup      - Configure credentials")
-        print(f"  {Colors.CYAN}[5]{Colors.NC} Help       - Show documentation links")
+        print(f"  {Colors.CYAN}[3]{Colors.NC} Cleanup    - Remove deployed FIPS profiles")
+        print(f"  {Colors.CYAN}[4]{Colors.NC} Report     - Generate compliance reports")
+        print(f"  {Colors.CYAN}[5]{Colors.NC} Setup      - Configure credentials")
+        print(f"  {Colors.CYAN}[6]{Colors.NC} Help       - Show documentation links")
         print(f"  {Colors.CYAN}[0]{Colors.NC} Exit")
 
         choice = get_choice("", [
             "Audit Mode",
             "Configure Mode",
+            "Cleanup Mode",
             "Report Mode",
             "Setup/Reconfigure",
             "Help",
@@ -3039,14 +4252,17 @@ def main_menu(config_manager: ConfigManager):
             ConfigureMode(config_manager).run()
             input("\nPress Enter to continue...")
         elif choice == 3:
-            ReportMode(config_manager).run()
+            CleanupMode(config_manager).run()
             input("\nPress Enter to continue...")
         elif choice == 4:
-            SetupWizard(config_manager).run()
+            ReportMode(config_manager).run()
+            input("\nPress Enter to continue...")
         elif choice == 5:
+            SetupWizard(config_manager).run()
+        elif choice == 6:
             show_help()
             input("\nPress Enter to continue...")
-        elif choice == 6:
+        elif choice == 7:
             print("\nGoodbye!")
             sys.exit(0)
 
@@ -3067,7 +4283,8 @@ def show_help():
 {Colors.YELLOW}Command Line Options:{Colors.NC}
   python3 fips-toolkit.py              # Interactive mode
   python3 fips-toolkit.py audit        # Run audit directly
-  python3 fips-toolkit.py configure    # Run configure directly
+  python3 fips-toolkit.py configure    # Deploy FIPS profiles (SCM or Firewall)
+  python3 fips-toolkit.py cleanup      # Remove FIPS profiles (SCM or Firewall)
   python3 fips-toolkit.py report       # Generate reports
   python3 fips-toolkit.py setup        # Run setup wizard
   python3 fips-toolkit.py clear        # Clear saved credentials
@@ -3103,6 +4320,9 @@ def show_help():
 
 def main():
     """Main entry point."""
+    # Load environment variables from .env file (if present)
+    env_file = load_dotenv()
+
     parser = argparse.ArgumentParser(
         description="FIPS 140-3 Compliance Toolkit for Palo Alto Networks",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -3110,7 +4330,8 @@ def main():
 Examples:
   python3 fips-toolkit.py              # Interactive mode
   python3 fips-toolkit.py audit        # Run compliance audit
-  python3 fips-toolkit.py configure    # Deploy FIPS profiles
+  python3 fips-toolkit.py configure    # Deploy FIPS profiles (SCM or Firewall)
+  python3 fips-toolkit.py cleanup      # Remove FIPS profiles (SCM or Firewall)
   python3 fips-toolkit.py setup        # Configure credentials
         """
     )
@@ -3118,7 +4339,7 @@ Examples:
     parser.add_argument(
         'command',
         nargs='?',
-        choices=['audit', 'configure', 'report', 'setup', 'clear', 'help'],
+        choices=['audit', 'configure', 'cleanup', 'report', 'setup', 'clear', 'help'],
         help='Command to run (default: interactive menu)'
     )
 
@@ -3154,10 +4375,11 @@ Examples:
 
     elif args.command == 'configure':
         print_banner()
-        if not config_manager.has_scm_credentials():
-            print_error("SCM credentials required. Run setup first.")
-            sys.exit(1)
         ConfigureMode(config_manager).run()
+
+    elif args.command == 'cleanup':
+        print_banner()
+        CleanupMode(config_manager).run()
 
     elif args.command == 'report':
         print_banner()

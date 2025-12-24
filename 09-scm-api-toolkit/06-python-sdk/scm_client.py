@@ -177,14 +177,14 @@ class SCMClient:
         """List all IKE crypto profiles."""
         response = self._request(
             "GET",
-            "/config/v1/ike-crypto-profiles",
+            "/sse/config/v1/ike-crypto-profiles",
             params={"folder": folder}
         )
         return response.get("data", [])
 
     def get_ike_crypto_profile(self, profile_id: str) -> Dict:
         """Get specific IKE crypto profile."""
-        return self._request("GET", f"/config/v1/ike-crypto-profiles/{profile_id}")
+        return self._request("GET", f"/sse/config/v1/ike-crypto-profiles/{profile_id}")
 
     def create_ike_crypto_profile(
         self,
@@ -212,21 +212,21 @@ class SCMClient:
         data = {
             "name": name,
             "encryption": encryption,
-            "authentication": authentication,
+            "hash": authentication,  # API uses 'hash' not 'authentication'
             "dh_group": dh_group,
             "lifetime": {"hours": lifetime_hours}
         }
 
         return self._request(
             "POST",
-            "/config/v1/ike-crypto-profiles",
+            "/sse/config/v1/ike-crypto-profiles",
             params={"folder": folder},
             data=data
         )
 
     def delete_ike_crypto_profile(self, profile_id: str) -> Dict:
         """Delete IKE crypto profile."""
-        return self._request("DELETE", f"/config/v1/ike-crypto-profiles/{profile_id}")
+        return self._request("DELETE", f"/sse/config/v1/ike-crypto-profiles/{profile_id}")
 
     # ==================== IPSec Crypto Profiles ====================
 
@@ -234,14 +234,14 @@ class SCMClient:
         """List all IPSec crypto profiles."""
         response = self._request(
             "GET",
-            "/config/v1/ipsec-crypto-profiles",
+            "/sse/config/v1/ipsec-crypto-profiles",
             params={"folder": folder}
         )
         return response.get("data", [])
 
     def get_ipsec_crypto_profile(self, profile_id: str) -> Dict:
         """Get specific IPSec crypto profile."""
-        return self._request("GET", f"/config/v1/ipsec-crypto-profiles/{profile_id}")
+        return self._request("GET", f"/sse/config/v1/ipsec-crypto-profiles/{profile_id}")
 
     def create_ipsec_crypto_profile(
         self,
@@ -283,14 +283,14 @@ class SCMClient:
 
         return self._request(
             "POST",
-            "/config/v1/ipsec-crypto-profiles",
+            "/sse/config/v1/ipsec-crypto-profiles",
             params={"folder": folder},
             data=data
         )
 
     def delete_ipsec_crypto_profile(self, profile_id: str) -> Dict:
         """Delete IPSec crypto profile."""
-        return self._request("DELETE", f"/config/v1/ipsec-crypto-profiles/{profile_id}")
+        return self._request("DELETE", f"/sse/config/v1/ipsec-crypto-profiles/{profile_id}")
 
     # ==================== TLS Service Profiles ====================
 
@@ -298,14 +298,14 @@ class SCMClient:
         """List all TLS service profiles."""
         response = self._request(
             "GET",
-            "/config/v1/tls-service-profiles",
+            "/sse/config/v1/tls-service-profiles",
             params={"folder": folder}
         )
         return response.get("data", [])
 
     def get_tls_service_profile(self, profile_id: str) -> Dict:
         """Get specific TLS service profile."""
-        return self._request("GET", f"/config/v1/tls-service-profiles/{profile_id}")
+        return self._request("GET", f"/sse/config/v1/tls-service-profiles/{profile_id}")
 
     def create_tls_service_profile(
         self,
@@ -339,14 +339,33 @@ class SCMClient:
 
         return self._request(
             "POST",
-            "/config/v1/tls-service-profiles",
+            "/sse/config/v1/tls-service-profiles",
             params={"folder": folder},
             data=data
         )
 
     def delete_tls_service_profile(self, profile_id: str) -> Dict:
         """Delete TLS service profile."""
-        return self._request("DELETE", f"/config/v1/tls-service-profiles/{profile_id}")
+        return self._request("DELETE", f"/sse/config/v1/tls-service-profiles/{profile_id}")
+
+    # ==================== Certificates ====================
+
+    def list_certificates(self, folder: str = "Shared") -> List[Dict]:
+        """
+        List all certificates available in the folder.
+
+        Args:
+            folder: Configuration folder
+
+        Returns:
+            List of certificate objects with 'name' and 'id' fields
+        """
+        response = self._request(
+            "GET",
+            "/sse/config/v1/certificates",
+            params={"folder": folder}
+        )
+        return response.get("data", [])
 
     # ==================== Interface Management Profiles ====================
 
@@ -354,7 +373,7 @@ class SCMClient:
         """List all interface management profiles."""
         response = self._request(
             "GET",
-            "/config/v1/interface-management-profiles",
+            "/sse/config/v1/interface-management-profiles",
             params={"folder": folder}
         )
         return response.get("data", [])
@@ -400,7 +419,7 @@ class SCMClient:
 
         return self._request(
             "POST",
-            "/config/v1/interface-management-profiles",
+            "/sse/config/v1/interface-management-profiles",
             params={"folder": folder},
             data=data
         )
@@ -409,7 +428,7 @@ class SCMClient:
         """Delete interface management profile."""
         return self._request(
             "DELETE",
-            f"/config/v1/interface-management-profiles/{profile_id}"
+            f"/sse/config/v1/interface-management-profiles/{profile_id}"
         )
 
     # ==================== Configuration Jobs ====================
@@ -436,13 +455,13 @@ class SCMClient:
 
         return self._request(
             "POST",
-            "/config/v1/config-versions/candidate:push",
+            "/sse/config/v1/config-versions/candidate:push",
             data=data
         )
 
     def get_job(self, job_id: str) -> Dict:
         """Get job status."""
-        return self._request("GET", f"/config/v1/jobs/{job_id}")
+        return self._request("GET", f"/sse/config/v1/jobs/{job_id}")
 
     def wait_for_job(self, job_id: str, timeout: int = 300) -> Dict:
         """
@@ -474,10 +493,14 @@ class SCMClient:
 
     # ==================== FIPS 140-3 Helper Methods ====================
 
+    # Default FIPS profile name prefix
+    DEFAULT_FIPS_PREFIX = "ca-ois-fips"
+
     def create_fips_ike_profile(
         self,
         tier: str = "recommended",
-        folder: str = "Shared"
+        folder: str = "Shared",
+        name_prefix: str = None
     ) -> Dict:
         """
         Create FIPS 140-3 compliant IKE crypto profile.
@@ -485,25 +508,25 @@ class SCMClient:
         Args:
             tier: Compliance tier (max, recommended, compat)
             folder: Configuration folder
+            name_prefix: Custom name prefix (default: ca-ois-fips)
 
         Returns:
             Created profile
         """
+        prefix = name_prefix or self.DEFAULT_FIPS_PREFIX
+
         profiles = {
             "max": {
-                "name": "fips-ike-crypto-max",
                 "encryption": ["aes-256-gcm"],
                 "authentication": ["sha512"],
                 "dh_group": ["group20"]
             },
             "recommended": {
-                "name": "fips-ike-crypto-recommended",
                 "encryption": ["aes-256-cbc", "aes-128-gcm"],
                 "authentication": ["sha384", "sha256"],
                 "dh_group": ["group20", "group19"]
             },
             "compat": {
-                "name": "fips-ike-crypto-compat",
                 "encryption": ["aes-256-cbc", "aes-256-gcm", "aes-128-cbc", "aes-128-gcm"],
                 "authentication": ["sha512", "sha384", "sha256"],
                 "dh_group": ["group20", "group19", "group16", "group14"]
@@ -514,8 +537,12 @@ class SCMClient:
             raise ValueError(f"Invalid tier: {tier}. Must be one of: {list(profiles.keys())}")
 
         config = profiles[tier]
+        # Use short tier names to stay under 31 char limit
+        tier_short = {"max": "max", "recommended": "rec", "compat": "compat"}.get(tier, tier)
+        profile_name = f"{prefix}-ike-{tier_short}"
+
         return self.create_ike_crypto_profile(
-            name=config["name"],
+            name=profile_name,
             encryption=config["encryption"],
             authentication=config["authentication"],
             dh_group=config["dh_group"],
@@ -525,7 +552,8 @@ class SCMClient:
     def create_fips_ipsec_profile(
         self,
         tier: str = "recommended",
-        folder: str = "Shared"
+        folder: str = "Shared",
+        name_prefix: str = None
     ) -> Dict:
         """
         Create FIPS 140-3 compliant IPSec crypto profile.
@@ -533,31 +561,30 @@ class SCMClient:
         Args:
             tier: Compliance tier (max, recommended, compat, gp)
             folder: Configuration folder
+            name_prefix: Custom name prefix (default: ca-ois-fips)
 
         Returns:
             Created profile
         """
+        prefix = name_prefix or self.DEFAULT_FIPS_PREFIX
+
         profiles = {
             "max": {
-                "name": "fips-ipsec-crypto-max",
                 "encryption": ["aes-256-gcm"],
                 "authentication": ["sha512"],
                 "dh_group": "group20"
             },
             "recommended": {
-                "name": "fips-ipsec-crypto-recommended",
                 "encryption": ["aes-256-gcm", "aes-128-gcm"],
                 "authentication": ["sha384", "sha256"],
                 "dh_group": "group20"
             },
             "compat": {
-                "name": "fips-ipsec-crypto-compat",
                 "encryption": ["aes-256-gcm", "aes-256-cbc", "aes-128-gcm", "aes-128-cbc"],
                 "authentication": ["sha512", "sha384", "sha256"],
                 "dh_group": "group14"
             },
             "gp": {
-                "name": "fips-ipsec-crypto-gp",
                 "encryption": ["aes-256-gcm", "aes-128-gcm"],
                 "authentication": ["sha256"],
                 "dh_group": "group19"
@@ -568,8 +595,12 @@ class SCMClient:
             raise ValueError(f"Invalid tier: {tier}. Must be one of: {list(profiles.keys())}")
 
         config = profiles[tier]
+        # Use short tier names to stay under 31 char limit
+        tier_short = {"max": "max", "recommended": "rec", "compat": "compat", "gp": "gp"}.get(tier, tier)
+        profile_name = f"{prefix}-ipsec-{tier_short}"
+
         return self.create_ipsec_crypto_profile(
-            name=config["name"],
+            name=profile_name,
             esp_encryption=config["encryption"],
             esp_authentication=config["authentication"],
             dh_group=config["dh_group"],
@@ -580,7 +611,8 @@ class SCMClient:
         self,
         tier: str = "recommended",
         certificate: str = "mgmt-cert",
-        folder: str = "Shared"
+        folder: str = "Shared",
+        name_prefix: str = None
     ) -> Dict:
         """
         Create FIPS 140-3 compliant TLS service profile.
@@ -589,23 +621,23 @@ class SCMClient:
             tier: Compliance tier (max, recommended, tls13)
             certificate: Certificate name
             folder: Configuration folder
+            name_prefix: Custom name prefix (default: ca-ois-fips)
 
         Returns:
             Created profile
         """
+        prefix = name_prefix or self.DEFAULT_FIPS_PREFIX
+
         profiles = {
             "max": {
-                "name": "fips-ssl-tls-max",
                 "min_version": "tls1-2",
                 "max_version": "tls1-3"
             },
             "recommended": {
-                "name": "fips-ssl-tls-recommended",
                 "min_version": "tls1-2",
-                "max_version": "max"
+                "max_version": "tls1-3"  # "max" is not valid, use explicit version
             },
             "tls13": {
-                "name": "fips-ssl-tls-1-3-only",
                 "min_version": "tls1-3",
                 "max_version": "tls1-3"
             }
@@ -615,8 +647,12 @@ class SCMClient:
             raise ValueError(f"Invalid tier: {tier}. Must be one of: {list(profiles.keys())}")
 
         config = profiles[tier]
+        # Use short tier names to stay under 31 char limit
+        tier_short = {"max": "max", "recommended": "rec", "tls13": "tls1.3"}.get(tier, tier)
+        profile_name = f"{prefix}-tls-{tier_short}"
+
         return self.create_tls_service_profile(
-            name=config["name"],
+            name=profile_name,
             certificate=certificate,
             min_version=config["min_version"],
             max_version=config["max_version"],
@@ -625,25 +661,41 @@ class SCMClient:
 
     def create_fips_mgmt_profile(
         self,
-        name: str = "fips-mgmt-profile",
+        name: str = None,
         ssh: bool = True,
         permitted_ip: List[str] = None,
-        folder: str = "Shared"
+        folder: str = "Shared",
+        name_prefix: str = None,
+        profile_type: str = "default"
     ) -> Dict:
         """
         Create FIPS 140-3 compliant interface management profile.
 
         Args:
-            name: Profile name
+            name: Profile name (overrides prefix-based naming)
             ssh: Enable SSH
             permitted_ip: List of permitted source networks
             folder: Configuration folder
+            name_prefix: Custom name prefix (default: ca-ois-fips)
+            profile_type: Profile type (default, https-only, monitoring-only)
 
         Returns:
             Created profile
         """
+        prefix = name_prefix or self.DEFAULT_FIPS_PREFIX
+
+        # Determine profile name (short names for 31 char limit)
+        if name:
+            profile_name = name
+        elif profile_type == "https-only":
+            profile_name = f"{prefix}-https"
+        elif profile_type == "monitoring-only":
+            profile_name = f"{prefix}-mon"
+        else:
+            profile_name = f"{prefix}-mgmt"
+
         return self.create_interface_mgmt_profile(
-            name=name,
+            name=profile_name,
             https=True,
             ssh=ssh,
             http=False,

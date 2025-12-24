@@ -2,6 +2,14 @@
 
 Manage interface management profiles through the Strata Cloud Manager API to control which protocols are permitted on firewall interfaces.
 
+> **Required Role: Network Admin or Superuser**
+>
+> Creating, updating, or deleting interface management profiles requires **Network Admin** or **Superuser** role.
+> Service accounts with only Security Admin role will receive **403 Forbidden** errors.
+>
+> If you cannot add Network Admin role to your service account, use the toolkit's **CLI option** to deploy
+> interface management profiles directly to the firewall via PAN-OS XML API instead.
+
 ## Endpoints
 
 | Method | Endpoint | Description |
