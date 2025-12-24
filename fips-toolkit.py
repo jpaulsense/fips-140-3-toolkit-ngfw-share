@@ -31,7 +31,10 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 # Version
-__version__ = "1.2.0"
+__version__ = "1.2.1"
+
+# Debug mode - set to True to see detailed API responses
+DEBUG = os.environ.get('FIPS_TOOLKIT_DEBUG', '').lower() in ('1', 'true', 'yes')
 
 # Configuration file location
 CONFIG_DIR = Path.home() / ".fips-toolkit"
@@ -96,6 +99,73 @@ class Colors:
     WHITE = '\033[1;37m'
     BOLD = '\033[1m'
     NC = '\033[0m'  # No Color
+
+
+def print_debug(message: str):
+    """Print debug message if DEBUG mode is enabled."""
+    if DEBUG:
+        print(f"{Colors.MAGENTA}[DEBUG]{Colors.NC} {message}")
+
+
+def extract_panos_error(response_text: str) -> str:
+    """Extract error message from PAN-OS API XML response.
+
+    PAN-OS can return errors in various formats:
+    - <response><msg>Error message</msg></response>
+    - <response><msg><line>Error line 1</line><line>Error line 2</line></msg></response>
+    - <response><result><msg>Error</msg></result></response>
+    """
+    import xml.etree.ElementTree as ET
+
+    try:
+        root = ET.fromstring(response_text)
+
+        # Log the full response in debug mode
+        print_debug(f"API Response: {response_text[:500]}...")
+
+        # Check status
+        status = root.get('status', 'unknown')
+        if status == 'success':
+            return 'success'
+
+        # Try various error message locations
+        error_parts = []
+
+        # Check for <msg><line> structure (multiple lines)
+        msg_elem = root.find('.//msg')
+        if msg_elem is not None:
+            lines = msg_elem.findall('line')
+            if lines:
+                for line in lines:
+                    if line.text:
+                        error_parts.append(line.text.strip())
+            elif msg_elem.text:
+                error_parts.append(msg_elem.text.strip())
+
+        # Check for <result><msg> structure
+        if not error_parts:
+            result_msg = root.find('.//result/msg')
+            if result_msg is not None and result_msg.text:
+                error_parts.append(result_msg.text.strip())
+
+        # Check for direct error text in response
+        if not error_parts:
+            result = root.find('.//result')
+            if result is not None and result.text:
+                error_parts.append(result.text.strip())
+
+        if error_parts:
+            return '; '.join(error_parts)
+
+        # If we still don't have an error, return the status with truncated response
+        return f"API error (status={status}): {response_text[:200]}"
+
+    except ET.ParseError as e:
+        print_debug(f"XML Parse error: {e}")
+        return f"Invalid XML response: {response_text[:200]}"
+    except Exception as e:
+        print_debug(f"Error extracting message: {e}")
+        return f"Error parsing response: {str(e)}"
 
 
 def clear_screen():
@@ -1371,6 +1441,9 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
 
         xpath = f"/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ike-crypto-profiles/entry[@name='{name}']"
 
+        print_debug(f"Creating IKE profile: {name}")
+        print_debug(f"Config: {config}")
+
         # Check if exists
         check = requests.post(base_url, data={
             'type': 'config', 'action': 'get', 'xpath': xpath, 'key': api_key
@@ -1392,16 +1465,17 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
         </entry>
         """
 
+        print_debug(f"XML Element: {element}")
+
         response = requests.post(base_url, data={
             'type': 'config', 'action': 'set', 'xpath': xpath, 'element': element, 'key': api_key
         }, verify=False, timeout=30)
 
-        root = ET.fromstring(response.text)
-        if root.get('status') == 'success':
+        result = extract_panos_error(response.text)
+        if result == 'success':
             return 'created'
         else:
-            msg = root.find('.//msg')
-            return msg.text if msg is not None else 'Unknown error'
+            return result
 
     def _create_ipsec_profile_firewall(self, base_url: str, api_key: str,
                                         name: str, config: dict) -> str:
@@ -1410,6 +1484,9 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
         import xml.etree.ElementTree as ET
 
         xpath = f"/config/devices/entry[@name='localhost.localdomain']/network/ike/crypto-profiles/ipsec-crypto-profiles/entry[@name='{name}']"
+
+        print_debug(f"Creating IPSec profile: {name}")
+        print_debug(f"Config: {config}")
 
         # Check if exists
         check = requests.post(base_url, data={
@@ -1433,16 +1510,17 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
         </entry>
         """
 
+        print_debug(f"XML Element: {element}")
+
         response = requests.post(base_url, data={
             'type': 'config', 'action': 'set', 'xpath': xpath, 'element': element, 'key': api_key
         }, verify=False, timeout=30)
 
-        root = ET.fromstring(response.text)
-        if root.get('status') == 'success':
+        result = extract_panos_error(response.text)
+        if result == 'success':
             return 'created'
         else:
-            msg = root.find('.//msg')
-            return msg.text if msg is not None else 'Unknown error'
+            return result
 
     def _create_mgmt_profile_firewall(self, base_url: str, api_key: str, name: str) -> str:
         """Create interface management profile on firewall."""
@@ -1450,6 +1528,8 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
         import xml.etree.ElementTree as ET
 
         xpath = f"/config/devices/entry[@name='localhost.localdomain']/network/profiles/interface-management-profile/entry[@name='{name}']"
+
+        print_debug(f"Creating management profile: {name}")
 
         # Check if exists
         check = requests.post(base_url, data={
@@ -1467,16 +1547,17 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
         </entry>
         """
 
+        print_debug(f"XML Element: {element}")
+
         response = requests.post(base_url, data={
             'type': 'config', 'action': 'set', 'xpath': xpath, 'element': element, 'key': api_key
         }, verify=False, timeout=30)
 
-        root = ET.fromstring(response.text)
-        if root.get('status') == 'success':
+        result = extract_panos_error(response.text)
+        if result == 'success':
             return 'created'
         else:
-            msg = root.find('.//msg')
-            return msg.text if msg is not None else 'Unknown error'
+            return result
 
     def _deploy_mgmt_via_cli(self, name_prefix: str) -> str:
         """Deploy interface management profile via CLI when SCM returns 403.
@@ -4312,6 +4393,16 @@ def show_help():
   Role recommendations:
   - Audit only:  Assign 'Auditor' role (read-only)
   - Configure:   Assign 'Security Administrator' role (read/write)
+
+{Colors.YELLOW}Troubleshooting:{Colors.NC}
+  Enable debug mode to see detailed API responses:
+    export FIPS_TOOLKIT_DEBUG=1
+    python3 fips-toolkit.py
+
+  Common issues:
+  - "None" errors: Enable debug mode to see full API response
+  - 403 Forbidden (SCM): Add 'Network Admin' role for interface management
+  - 404 Not Found: Check API path (use /sse/config/v1/ for Prisma Access)
 
 {Colors.YELLOW}Support:{Colors.NC}
   For issues, please check the README.md or submit an issue on GitHub.
