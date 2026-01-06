@@ -19,8 +19,9 @@ A comprehensive toolkit for achieving FIPS 140-3 cryptographic compliance on Pal
 git clone https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share.git
 cd fips-140-3-toolkit-ngfw-share
 
-# 2. Install dependencies
-pip install requests
+# 2. Install dependencies (only 'requests' is required)
+pip install -r requirements.txt
+# Or manually: pip install requests
 
 # 3. Run the interactive toolkit
 python3 fips-toolkit.py
@@ -30,6 +31,14 @@ The interactive wizard will guide you through:
 - Configuring credentials (SCM and/or firewall)
 - Understanding FIPS 140-3 requirements
 - Running your first compliance audit
+
+### Dependency Check
+
+The toolkit will warn you if dependencies are missing. To verify your setup:
+
+```bash
+python3 -c "import requests; print('All dependencies installed!')"
+```
 
 ## Overview
 
@@ -168,28 +177,46 @@ git clone https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share.git
 cd fips-140-3-toolkit-ngfw-share
 ```
 
-### Install Python Dependencies (for SCM toolkit)
+### Install Python Dependencies
 
 ```bash
-# Create virtual environment (recommended)
+# Option 1: Install directly (simplest)
+pip install -r requirements.txt
+
+# Option 2: Use virtual environment (recommended for isolation)
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r 09-scm-api-toolkit/06-python-sdk/requirements.txt
+pip install -r requirements.txt
 ```
+
+**Required dependency:** `requests` (for HTTP API calls)
 
 ### Verify Installation
 
 ```bash
-# Check Python version
-python3 --version  # Should be 3.8+
+# Check Python version (3.8+ required)
+python3 --version
 
-# Check curl
-curl --version
+# Verify requests is installed
+python3 -c "import requests; print(f'requests {requests.__version__} installed')"
 
-# Verify dependencies
-pip list | grep requests
+# Run the toolkit
+python3 fips-toolkit.py --help
+```
+
+### Troubleshooting Dependencies
+
+If you see `ModuleNotFoundError: No module named 'requests'`:
+
+```bash
+# Try with pip3 explicitly
+pip3 install requests
+
+# Or with python -m pip
+python3 -m pip install requests
+
+# On some systems, you may need sudo
+sudo pip3 install requests
 ```
 
 ## Advanced Usage
