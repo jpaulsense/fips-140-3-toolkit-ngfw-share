@@ -31,7 +31,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 # Version
-__version__ = "1.5.0"
+__version__ = "1.5.1"
 
 # Debug mode - set to True to see detailed API responses
 DEBUG = os.environ.get('FIPS_TOOLKIT_DEBUG', '').lower() in ('1', 'true', 'yes')
@@ -2589,7 +2589,7 @@ class ReportMode:
         report = "\n".join(report_lines)
         self._save_report(report, output_file)
 
-    def _generate_detailed(self, output_file: Path):
+    def _generate_detailed(self, output_file: Path, debug_capture: DebugCapture = None):
         """Generate detailed report matching the comprehensive template."""
         print_info("Running comprehensive audit...")
 
@@ -2620,14 +2620,39 @@ class ReportMode:
         r.append("FIPS 140-3 COMPLIANCE VALIDATION")
         r.append("=" * 60)
 
+        if debug_capture:
+            debug_capture.log("Starting detailed report generation...")
+
         # Run appropriate audit based on configured credentials
-        if self.config.has_firewall_credentials():
-            self._run_detailed_firewall_audit(r, findings)
-        elif self.config.has_scm_credentials():
-            self._run_detailed_scm_audit(r, findings)
-        else:
-            r.append("[ERROR] No credentials configured")
-            self._save_report("\n".join(r), output_file)
+        try:
+            if self.config.has_firewall_credentials():
+                if debug_capture:
+                    creds = self.config.get_firewall_credentials()
+                    debug_capture.log(f"Running firewall audit: {creds.get('host')}")
+                self._run_detailed_firewall_audit(r, findings)
+            elif self.config.has_scm_credentials():
+                if debug_capture:
+                    creds = self.config.get_scm_credentials()
+                    debug_capture.log(f"Running SCM audit: TSG {creds.get('tsg_id')}")
+                self._run_detailed_scm_audit(r, findings)
+            else:
+                r.append("[ERROR] No credentials configured")
+                self._save_report("\n".join(r), output_file)
+                return
+        except Exception as e:
+            error_msg = str(e)
+            print_error(f"Audit failed: {e}")
+            if debug_capture:
+                debug_capture.log(f"EXCEPTION: {e}")
+            elif prompt_debug_retry(error_msg, "detailed report generation"):
+                print_info("\nRetrying with debug mode enabled...")
+                dc = DebugCapture()
+                dc.start()
+                self._generate_detailed(output_file, debug_capture=dc)
+                dc.stop()
+                filepath = dc.save_report()
+                print(f"\n{Colors.GREEN}Debug report saved to:{Colors.NC} {filepath}")
+                print(f"{Colors.CYAN}Please send this file to the developer for troubleshooting.{Colors.NC}")
             return
 
         # Add compliance summary
@@ -3234,19 +3259,30 @@ class ReportMode:
         r.append("=" * 60)
         r.append("")
 
-        for profile in client.list_interface_mgmt_profiles(folder=folder):
-            name = profile.get('name', 'Unknown')
-            r.append(f"[INFO] Checking profile: {name}")
-            issues = validate_mgmt_profile(profile)
-            if issues:
-                for issue in issues:
-                    r.append(f"[FAIL] {issue}")
-                    findings['fail'] += 1
-                findings['critical_items'].append({'name': f"Mgmt Profile '{name}'", 'issues': issues})
+        try:
+            for profile in client.list_interface_mgmt_profiles(folder=folder):
+                name = profile.get('name', 'Unknown')
+                r.append(f"[INFO] Checking profile: {name}")
+                issues = validate_mgmt_profile(profile)
+                if issues:
+                    for issue in issues:
+                        r.append(f"[FAIL] {issue}")
+                        findings['fail'] += 1
+                    findings['critical_items'].append({'name': f"Mgmt Profile '{name}'", 'issues': issues})
+                else:
+                    r.append("[PASS] Telnet is disabled")
+                    r.append("[PASS] HTTP is disabled")
+                    findings['pass'] += 2
+                r.append("")
+        except Exception as e:
+            if "403" in str(e):
+                r.append("[WARN] Requires Network Admin role in SCM (403 Forbidden)")
+                r.append("[INFO] Interface management profiles skipped - insufficient permissions")
+                findings['warn'] += 1
+                findings['warning_items'].append("Interface management profiles: Requires Network Admin role (403)")
             else:
-                r.append("[PASS] Telnet is disabled")
-                r.append("[PASS] HTTP is disabled")
-                findings['pass'] += 2
+                r.append(f"[ERROR] Failed to list interface management profiles: {e}")
+                findings['warn'] += 1
             r.append("")
 
     def _generate_audit_log(self, output_file: Path):
