@@ -155,9 +155,24 @@ if $PYTHON_CMD -c "import requests" &> /dev/null; then
     print_success "requests $REQUESTS_VERSION already installed"
 else
     print_status "Installing requests..."
-    $PIP_CMD install requests --quiet
-    REQUESTS_VERSION=$($PYTHON_CMD -c "import requests; print(requests.__version__)")
-    print_success "requests $REQUESTS_VERSION installed"
+    # Try normal install first, fall back to --user if it fails (e.g., on macOS with system Python)
+    if ! $PIP_CMD install requests --quiet 2>/dev/null; then
+        print_warning "System install failed, trying user install..."
+        $PIP_CMD install requests --user --quiet
+    fi
+
+    # Verify it actually installed for this Python
+    if $PYTHON_CMD -c "import requests" &> /dev/null; then
+        REQUESTS_VERSION=$($PYTHON_CMD -c "import requests; print(requests.__version__)")
+        print_success "requests $REQUESTS_VERSION installed"
+    else
+        print_error "requests installed but not importable by $PYTHON_CMD"
+        echo ""
+        echo "This usually means pip installed to a different Python."
+        echo "Try running manually:"
+        echo "  $PYTHON_CMD -m pip install requests"
+        exit 1
+    fi
 fi
 
 # Verify installation

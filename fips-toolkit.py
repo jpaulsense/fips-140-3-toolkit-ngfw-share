@@ -31,7 +31,34 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 # Version
-__version__ = "1.5.1"
+__version__ = "1.5.2"
+
+# Check for required dependencies early
+def check_dependencies():
+    """Check that required dependencies are installed."""
+    missing = []
+    try:
+        import requests
+    except ImportError:
+        missing.append('requests')
+
+    if missing:
+        print("\033[91m" + "=" * 60 + "\033[0m")
+        print("\033[91mMISSING REQUIRED DEPENDENCIES\033[0m")
+        print("\033[91m" + "=" * 60 + "\033[0m")
+        print()
+        print(f"The following Python packages are not installed: {', '.join(missing)}")
+        print()
+        print("\033[93mTo install, run:\033[0m")
+        print(f"  {sys.executable} -m pip install {' '.join(missing)}")
+        print()
+        print("Or run the install script:")
+        print("  ./install.sh        (macOS/Linux)")
+        print("  install.bat         (Windows)")
+        print()
+        sys.exit(1)
+
+check_dependencies()
 
 # Debug mode - set to True to see detailed API responses
 DEBUG = os.environ.get('FIPS_TOOLKIT_DEBUG', '').lower() in ('1', 'true', 'yes')
