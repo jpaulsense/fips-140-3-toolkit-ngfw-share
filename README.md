@@ -1,5 +1,9 @@
 # FIPS 140-3 Compliance Toolkit for Palo Alto Networks
 
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share/releases)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
 A comprehensive toolkit for achieving FIPS 140-3 cryptographic compliance on Palo Alto Networks firewalls and Strata Cloud Manager (SCM) tenants **without requiring CC/FIPS-CC mode**.
 
 > **DISCLAIMER**: This is an independent, open-source tool and is **NOT affiliated with, endorsed by, or supported by Palo Alto Networks, Inc.**
@@ -12,8 +16,8 @@ A comprehensive toolkit for achieving FIPS 140-3 cryptographic compliance on Pal
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/fips-140-3-toolkit.git
-cd fips-140-3-toolkit
+git clone https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share.git
+cd fips-140-3-toolkit-ngfw-share
 
 # 2. Install dependencies
 pip install requests
@@ -46,6 +50,17 @@ FIPS 140-3 compliance typically requires enabling CC/FIPS-CC mode, which:
 
 This toolkit provides an alternative approach: **configure only FIPS-compliant cryptographic algorithms** without enabling CC mode. This achieves cryptographic compliance while maintaining full feature availability.
 
+## Key Features
+
+- **Interactive CLI** - Guided wizards for audit, configure, cleanup, and reporting
+- **Dual Target Support** - Works with both SCM (Strata Cloud Manager) and direct firewall connections
+- **Profile Tiers** - Choose from Max, Recommended, or Compatible security levels
+- **Smart Auditing** - Identifies in-use vs unused profiles, highlights high-risk configurations
+- **Multi-Format Reports** - Executive summaries, detailed audits, and visual infographics
+- **Interactive Cleanup** - Multi-select interface to remove specific profiles (v1.4.0)
+- **Debug Capture** - Automatic troubleshooting data collection when errors occur
+- **CI/CD Ready** - Environment variable support for automated pipelines
+
 ## Table of Contents
 
 - [Quick Start](#quick-start-new-users)
@@ -69,6 +84,7 @@ python3 fips-toolkit.py
 # Direct commands
 python3 fips-toolkit.py audit       # Run compliance audit
 python3 fips-toolkit.py configure   # Deploy FIPS profiles
+python3 fips-toolkit.py cleanup     # Remove FIPS profiles (interactive multi-select)
 python3 fips-toolkit.py report      # Generate compliance report
 python3 fips-toolkit.py setup       # Reconfigure credentials
 python3 fips-toolkit.py clear       # Clear saved credentials
@@ -81,8 +97,22 @@ python3 fips-toolkit.py help        # Show help
 |------|-------------|
 | **Audit** | Scan existing IKE, IPSec, TLS, and management profiles for FIPS compliance |
 | **Configure** | Deploy pre-built FIPS-compliant profiles (max, recommended, or compat tiers) |
-| **Report** | Generate compliance reports for auditors |
+| **Cleanup** | Remove FIPS profiles with interactive multi-select (v1.4.0+) |
+| **Report** | Generate compliance reports (Executive, Summary, Detailed, or Complete Package) |
 | **Setup** | Configure SCM and/or firewall credentials |
+
+### Report Types
+
+The toolkit generates multiple report formats:
+
+| Report Type | Description |
+|-------------|-------------|
+| **Executive Report** | 1-2 page management summary for leadership |
+| **Summary Report** | Pass/fail overview with counts |
+| **Detailed Report** | Full technical audit with all findings |
+| **Audit Log** | Complete output with timestamps |
+| **Complete Package** | All reports + infographic in one folder |
+| **Infographic** | Visual SVG executive summary |
 
 ### Configuration Storage
 
@@ -217,42 +247,36 @@ commit
 .
 ├── fips-toolkit.py              # MAIN ENTRY POINT - Interactive toolkit
 ├── README.md                    # This file
+├── LICENSE                      # MIT License
+├── requirements.txt             # Python dependencies
+│
 ├── docs/                        # Documentation
-│   └── SCM-CREDENTIAL-SETUP.md  # Detailed SCM credential & role guide
+│   ├── SCM-CREDENTIAL-SETUP.md  # Detailed SCM credential & role guide
+│   └── EXECUTIVE-OVERVIEW.md    # Executive summary for leadership
+│
+├── infographic/                 # Visual documentation
+│   └── *.svg                    # FIPS compliance infographics
+│
+├── snippet-configs/             # Ready-to-use configuration snippets
+│
 ├── 00-overview/                 # FIPS 140-3 overview and concepts
 ├── 01-ipsec-ike/               # IKE and IPSec crypto profiles
-│   ├── README.md               # Configuration guide
-│   ├── ike-cli-commands.txt    # CLI commands for IKE
-│   ├── ipsec-cli-commands.txt  # CLI commands for IPSec
-│   └── xml-configs/            # XML configuration snippets
 ├── 02-ssl-tls/                 # SSL/TLS profile configurations
-│   ├── README.md               # TLS configuration guide
-│   ├── ssl-tls-cli.txt        # CLI commands
-│   └── xml-configs/            # XML snippets
-├── 03-ssh/                     # SSH configuration
-│   ├── README.md               # SSH hardening guide
-│   └── ssh-cli.txt            # CLI commands
+├── 03-ssh/                     # SSH configuration and hardening
 ├── 04-admin-web-interface/     # Web interface security
-│   └── README.md               # Admin interface hardening
-├── 05-strata-cloud-manager/    # SCM integration guide
-│   └── README.md               # SCM-specific considerations
+├── 05-strata-cloud-manager/    # SCM integration guides
 ├── 06-verification-scripts/    # Manual verification scripts
-│   └── scripts/                # Bash verification scripts
 ├── 07-api-reference/           # PAN-OS API reference
-│   └── README.md               # API documentation
+│
 ├── 08-validation-tools/        # Automated validation tools
-│   ├── scripts/                # Validation bash scripts
-│   └── sample-reports/         # Example validation reports
+│   ├── fips-compliance-validator.py   # Standalone firewall validator
+│   ├── fips-profile-cleanup.py        # Profile cleanup utility
+│   └── sample-reports/                # Example validation reports
+│
 └── 09-scm-api-toolkit/         # Strata Cloud Manager API toolkit
-    ├── 00-overview/            # SCM API overview
-    ├── 01-authentication/      # OAuth2 authentication
-    ├── 02-ike-crypto-profiles/ # IKE profile API docs
-    ├── 03-ipsec-crypto-profiles/ # IPSec profile API docs
-    ├── 04-ssl-tls-profiles/    # TLS profile API docs
-    ├── 05-interface-management/ # Interface management API
-    ├── 06-python-sdk/          # Python SDK wrapper
-    ├── 07-examples/            # Working examples
-    └── sample-reports/         # SCM compliance reports
+    ├── 01-authentication/      # OAuth2 authentication helpers
+    ├── 06-python-sdk/          # Python SDK (scm_client.py)
+    └── 07-examples/            # Working deployment examples
 ```
 
 ## FIPS 140-3 Requirements
@@ -428,10 +452,29 @@ Solution: Profile exists. Delete first or use update endpoint.
 ### Debug Mode
 
 ```bash
-# Enable verbose output
+# Enable verbose output for the main toolkit
+export FIPS_TOOLKIT_DEBUG=1
+python3 fips-toolkit.py audit
+
+# Enable debug for standalone validator
 export DEBUG=1
 ./08-validation-tools/scripts/validate-fips-compliance.sh <firewall-ip>
 ```
+
+### Debug Capture (v1.3.0+)
+
+When errors occur during deployment, the toolkit offers to retry with debug capture:
+
+```
+Would you like to retry with debug mode enabled? [y/N]: y
+```
+
+This automatically:
+1. Enables detailed API logging
+2. Collects device info (model, serial, PAN-OS version)
+3. Saves a debug report to `~/.fips-toolkit/debug_reports/`
+
+Debug reports include timestamps, API responses, and system info for troubleshooting.
 
 ## Contributing
 
