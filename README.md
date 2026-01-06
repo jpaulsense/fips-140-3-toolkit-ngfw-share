@@ -14,6 +14,30 @@ A comprehensive toolkit for achieving FIPS 140-3 cryptographic compliance on Pal
 
 ## Quick Start (New Users)
 
+### Automatic Installation (Recommended)
+
+**Windows:**
+```cmd
+git clone https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share.git
+cd fips-140-3-toolkit-ngfw-share
+install.bat
+```
+
+**macOS / Linux:**
+```bash
+git clone https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share.git
+cd fips-140-3-toolkit-ngfw-share
+./install.sh
+```
+
+The install script will:
+- Check if Python 3.8+ is installed (provides download links if not)
+- Check if pip is installed (installs it automatically if not)
+- Install required dependencies
+- Offer to run the toolkit immediately
+
+### Manual Installation
+
 ```bash
 # 1. Clone the repository
 git clone https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share.git
@@ -31,14 +55,6 @@ The interactive wizard will guide you through:
 - Configuring credentials (SCM and/or firewall)
 - Understanding FIPS 140-3 requirements
 - Running your first compliance audit
-
-### Dependency Check
-
-The toolkit will warn you if dependencies are missing. To verify your setup:
-
-```bash
-python3 -c "import requests; print('All dependencies installed!')"
-```
 
 ## Overview
 
@@ -273,6 +289,8 @@ commit
 ```
 .
 ├── fips-toolkit.py              # MAIN ENTRY POINT - Interactive toolkit
+├── install.bat                  # Windows automatic installer
+├── install.sh                   # macOS/Linux automatic installer
 ├── README.md                    # This file
 ├── LICENSE                      # MIT License
 ├── requirements.txt             # Python dependencies
