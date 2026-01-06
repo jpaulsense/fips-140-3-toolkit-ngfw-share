@@ -31,7 +31,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 # Version
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 
 # Debug mode - set to True to see detailed API responses
 DEBUG = os.environ.get('FIPS_TOOLKIT_DEBUG', '').lower() in ('1', 'true', 'yes')
@@ -1063,7 +1063,7 @@ class AuditMode:
             print_error("No credentials configured. Run setup first.")
             return
 
-    def _audit_scm(self):
+    def _audit_scm(self, debug_capture: DebugCapture = None, saved_folder: str = None):
         """Audit SCM profiles."""
         print_section("Auditing Strata Cloud Manager")
 
@@ -1085,7 +1085,15 @@ class AuditMode:
                 tsg_id=creds['tsg_id']
             )
 
-            folder = get_input("Configuration folder", default="Shared")
+            # Use saved folder on debug retry, otherwise prompt
+            if saved_folder:
+                folder = saved_folder
+            else:
+                folder = get_input("Configuration folder", default="Shared")
+
+            if debug_capture:
+                debug_capture.collect_scm_info(client)
+                debug_capture.log(f"Auditing folder: {folder}")
 
             print_info(f"Scanning profiles in folder: {folder}")
             print()
@@ -1095,7 +1103,11 @@ class AuditMode:
 
             # Audit IKE profiles
             print(f"\n{Colors.BOLD}IKE Crypto Profiles:{Colors.NC}")
+            if debug_capture:
+                debug_capture.log("Fetching IKE crypto profiles...")
             ike_profiles = client.list_ike_crypto_profiles(folder=folder)
+            if debug_capture:
+                debug_capture.log(f"Found {len(ike_profiles)} IKE profiles")
             for profile in ike_profiles:
                 name = profile.get("name", "Unknown")
                 findings = validate_ike_profile(profile)
@@ -1113,7 +1125,11 @@ class AuditMode:
 
             # Audit IPSec profiles
             print(f"\n{Colors.BOLD}IPSec Crypto Profiles:{Colors.NC}")
+            if debug_capture:
+                debug_capture.log("Fetching IPSec crypto profiles...")
             ipsec_profiles = client.list_ipsec_crypto_profiles(folder=folder)
+            if debug_capture:
+                debug_capture.log(f"Found {len(ipsec_profiles)} IPSec profiles")
             for profile in ipsec_profiles:
                 name = profile.get("name", "Unknown")
                 findings = validate_ipsec_profile(profile)
@@ -1131,7 +1147,11 @@ class AuditMode:
 
             # Audit TLS profiles
             print(f"\n{Colors.BOLD}TLS Service Profiles:{Colors.NC}")
+            if debug_capture:
+                debug_capture.log("Fetching TLS service profiles...")
             tls_profiles = client.list_tls_service_profiles(folder=folder)
+            if debug_capture:
+                debug_capture.log(f"Found {len(tls_profiles)} TLS profiles")
             for profile in tls_profiles:
                 name = profile.get("name", "Unknown")
                 findings = validate_tls_profile(profile)
@@ -1150,7 +1170,11 @@ class AuditMode:
             # Audit management profiles
             print(f"\n{Colors.BOLD}Interface Management Profiles:{Colors.NC}")
             try:
+                if debug_capture:
+                    debug_capture.log("Fetching interface management profiles...")
                 mgmt_profiles = client.list_interface_mgmt_profiles(folder=folder)
+                if debug_capture:
+                    debug_capture.log(f"Found {len(mgmt_profiles)} management profiles")
                 for profile in mgmt_profiles:
                     name = profile.get("name", "Unknown")
                     findings = validate_mgmt_profile(profile)
@@ -1169,8 +1193,12 @@ class AuditMode:
                 if "403" in str(e):
                     print_warning("  Requires Network Admin role in SCM (403 Forbidden)")
                     print_info("  Use 'Audit > Firewall (CLI)' to audit interface management profiles")
+                    if debug_capture:
+                        debug_capture.log("MGMT 403 ERROR: Requires Network Admin role")
                 else:
                     print_error(f"  Failed to list profiles: {e}")
+                    if debug_capture:
+                        debug_capture.log(f"MGMT ERROR: {e}")
 
             # Summary
             print_section("SCM Audit Summary")
@@ -1183,13 +1211,28 @@ class AuditMode:
                 print(f"\n  {Colors.RED}FIPS 140-3 COMPLIANCE: FAILED{Colors.NC}")
                 print(f"\n  {fail_count} non-compliant profile(s) require remediation.")
 
+            if debug_capture:
+                debug_capture.log(f"Audit complete: {pass_count} passed, {fail_count} failed")
+
         except ImportError as e:
             print_error(f"Missing dependencies: {e}")
             print_info("Run: pip install requests")
         except Exception as e:
+            error_msg = str(e)
             print_error(f"Audit failed: {e}")
+            if debug_capture:
+                debug_capture.log(f"EXCEPTION: {e}")
+            elif prompt_debug_retry(error_msg, "SCM audit"):
+                print_info("\nRetrying with debug mode enabled...")
+                dc = DebugCapture()
+                dc.start()
+                self._audit_scm(debug_capture=dc, saved_folder=folder if 'folder' in dir() else None)
+                dc.stop()
+                filepath = dc.save_report()
+                print(f"\n{Colors.GREEN}Debug report saved to:{Colors.NC} {filepath}")
+                print(f"{Colors.CYAN}Please send this file to the developer for troubleshooting.{Colors.NC}")
 
-    def _audit_firewall(self):
+    def _audit_firewall(self, debug_capture: DebugCapture = None):
         """Audit firewall directly."""
         print_section("Auditing Firewall")
 
@@ -1202,6 +1245,9 @@ class AuditMode:
             creds = self.config.get_firewall_credentials()
 
             print_info(f"Connecting to: {creds['host']}")
+
+            if debug_capture:
+                debug_capture.log(f"Connecting to firewall: {creds['host']}")
 
             # Import and run validator
             from importlib.util import spec_from_file_location, module_from_spec
@@ -1220,13 +1266,33 @@ class AuditMode:
                 creds['password']
             )
 
+            if debug_capture:
+                debug_capture.collect_firewall_info(creds['host'], validator.api_key if hasattr(validator, 'api_key') else None)
+                debug_capture.log("Running firewall compliance validation...")
+
             result = validator.run()
+
+            if debug_capture:
+                debug_capture.log(f"Audit complete: result={result}")
+
             return result
 
         except ImportError as e:
             print_error(f"Missing dependencies: {e}")
         except Exception as e:
+            error_msg = str(e)
             print_error(f"Audit failed: {e}")
+            if debug_capture:
+                debug_capture.log(f"EXCEPTION: {e}")
+            elif prompt_debug_retry(error_msg, "firewall audit"):
+                print_info("\nRetrying with debug mode enabled...")
+                dc = DebugCapture()
+                dc.start()
+                self._audit_firewall(debug_capture=dc)
+                dc.stop()
+                filepath = dc.save_report()
+                print(f"\n{Colors.GREEN}Debug report saved to:{Colors.NC} {filepath}")
+                print(f"{Colors.CYAN}Please send this file to the developer for troubleshooting.{Colors.NC}")
 
 
 class ConfigureMode:
@@ -2038,81 +2104,160 @@ Example: {Colors.WHITE}ca-ois-fips{Colors.NC}-ike-rec
         mgmt_name = f"{name_prefix}-mgmt"
         return self._create_mgmt_profile_firewall(base_url, api_key, mgmt_name)
 
-    def _deploy_specific(self):
+    def _deploy_specific(self, debug_capture: DebugCapture = None, saved_params: dict = None):
         """Deploy specific profile type."""
-        choice = get_choice("Select profile type:", [
-            "IKE Crypto Profile",
-            "IPSec Crypto Profile",
-            "TLS Service Profile",
-            "Interface Management Profile"
-        ])
+        # Use saved parameters on debug retry, otherwise prompt user
+        if saved_params:
+            choice = saved_params['choice']
+            tier = saved_params['tier']
+            tier_short = saved_params['tier_short']
+            name_prefix = saved_params['name_prefix']
+            folder = saved_params['folder']
+            cert = saved_params.get('cert')
+        else:
+            choice = get_choice("Select profile type:", [
+                "IKE Crypto Profile",
+                "IPSec Crypto Profile",
+                "TLS Service Profile",
+                "Interface Management Profile"
+            ])
 
-        tier_choice = get_choice("Select tier:", [
-            "max (highest security)",
-            "recommended (balanced)",
-            "compat (compatibility)"
-        ])
+            tier_choice = get_choice("Select tier:", [
+                "max (highest security)",
+                "recommended (balanced)",
+                "compat (compatibility)"
+            ])
 
-        tier_map = {1: "max", 2: "recommended", 3: "compat"}
-        tier = tier_map[tier_choice]
-        tier_short = {"max": "max", "recommended": "rec", "compat": "compat"}.get(tier, tier)
+            tier_map = {1: "max", 2: "recommended", 3: "compat"}
+            tier = tier_map[tier_choice]
+            tier_short = {"max": "max", "recommended": "rec", "compat": "compat"}.get(tier, tier)
 
-        name_prefix = get_input("Profile name prefix", default="ca-ois-fips")
-        folder = get_input("Target folder", default="Shared")
+            name_prefix = get_input("Profile name prefix", default="ca-ois-fips")
+            folder = get_input("Target folder", default="Shared")
+            cert = None
+
+        # Save parameters for potential debug retry
+        params = {
+            'choice': choice,
+            'tier': tier,
+            'tier_short': tier_short,
+            'name_prefix': name_prefix,
+            'folder': folder,
+            'cert': cert
+        }
 
         try:
             client = self._get_client()
 
+            if debug_capture:
+                debug_capture.collect_scm_info(client)
+
             if choice == 1:
+                if debug_capture:
+                    debug_capture.log(f"Creating IKE profile: {name_prefix}-ike-{tier_short}")
                 client.create_fips_ike_profile(tier=tier, folder=folder, name_prefix=name_prefix)
                 print_success(f"Created {name_prefix}-ike-{tier_short}")
             elif choice == 2:
+                if debug_capture:
+                    debug_capture.log(f"Creating IPSec profile: {name_prefix}-ipsec-{tier_short}")
                 client.create_fips_ipsec_profile(tier=tier, folder=folder, name_prefix=name_prefix)
                 print_success(f"Created {name_prefix}-ipsec-{tier_short}")
             elif choice == 3:
                 print(f"\n{Colors.CYAN}TLS Profile Configuration:{Colors.NC}")
                 print("TLS profiles require a certificate. Select from available certificates:")
-                cert = self._select_certificate(client, folder)
+                if cert is None:
+                    cert = self._select_certificate(client, folder)
+                    params['cert'] = cert
                 if cert:
+                    if debug_capture:
+                        debug_capture.log(f"Creating TLS profile with cert: {cert}")
                     client.create_fips_tls_profile(tier=tier, certificate=cert,
                                                     folder=folder, name_prefix=name_prefix)
                     print_success(f"Created {name_prefix}-tls-{tier_short}")
                 else:
                     print_info("Skipped TLS profile (no certificate selected)")
             elif choice == 4:
+                if debug_capture:
+                    debug_capture.log(f"Creating management profile: {name_prefix}-mgmt")
                 client.create_fips_mgmt_profile(folder=folder, name_prefix=name_prefix)
                 print_success(f"Created {name_prefix}-mgmt")
 
-        except Exception as e:
-            print_error(f"Failed: {e}")
+            if debug_capture:
+                debug_capture.log("Profile creation completed successfully")
 
-    def _list_profiles(self):
+        except Exception as e:
+            error_msg = str(e)
+            print_error(f"Failed: {e}")
+            if debug_capture:
+                debug_capture.log(f"ERROR: {e}")
+            elif prompt_debug_retry(error_msg, "profile deployment"):
+                print_info("\nRetrying with debug mode enabled...")
+                dc = DebugCapture()
+                dc.start()
+                self._deploy_specific(debug_capture=dc, saved_params=params)
+                dc.stop()
+                filepath = dc.save_report()
+                print(f"\n{Colors.GREEN}Debug report saved to:{Colors.NC} {filepath}")
+                print(f"{Colors.CYAN}Please send this file to the developer for troubleshooting.{Colors.NC}")
+
+    def _list_profiles(self, debug_capture: DebugCapture = None, saved_folder: str = None):
         """List current profiles."""
         print_section("Current Profiles")
 
-        folder = get_input("Folder to list", default="Shared")
+        # Use saved folder on debug retry, otherwise prompt
+        if saved_folder:
+            folder = saved_folder
+        else:
+            folder = get_input("Folder to list", default="Shared")
 
         try:
             client = self._get_client()
 
+            if debug_capture:
+                debug_capture.collect_scm_info(client)
+                debug_capture.log(f"Listing profiles in folder: {folder}")
+
             print(f"\n{Colors.BOLD}IKE Crypto Profiles:{Colors.NC}")
+            if debug_capture:
+                debug_capture.log("Fetching IKE crypto profiles...")
             for p in client.list_ike_crypto_profiles(folder=folder):
                 print(f"  - {p.get('name')}")
 
             print(f"\n{Colors.BOLD}IPSec Crypto Profiles:{Colors.NC}")
+            if debug_capture:
+                debug_capture.log("Fetching IPSec crypto profiles...")
             for p in client.list_ipsec_crypto_profiles(folder=folder):
                 print(f"  - {p.get('name')}")
 
             print(f"\n{Colors.BOLD}TLS Service Profiles:{Colors.NC}")
+            if debug_capture:
+                debug_capture.log("Fetching TLS service profiles...")
             for p in client.list_tls_service_profiles(folder=folder):
                 print(f"  - {p.get('name')}")
 
             print(f"\n{Colors.BOLD}Interface Management Profiles:{Colors.NC}")
+            if debug_capture:
+                debug_capture.log("Fetching interface management profiles...")
             for p in client.list_interface_mgmt_profiles(folder=folder):
                 print(f"  - {p.get('name')}")
 
+            if debug_capture:
+                debug_capture.log("Profile listing completed successfully")
+
         except Exception as e:
+            error_msg = str(e)
             print_error(f"Failed: {e}")
+            if debug_capture:
+                debug_capture.log(f"ERROR: {e}")
+            elif prompt_debug_retry(error_msg, "profile listing"):
+                print_info("\nRetrying with debug mode enabled...")
+                dc = DebugCapture()
+                dc.start()
+                self._list_profiles(debug_capture=dc, saved_folder=folder)
+                dc.stop()
+                filepath = dc.save_report()
+                print(f"\n{Colors.GREEN}Debug report saved to:{Colors.NC} {filepath}")
+                print(f"{Colors.CYAN}Please send this file to the developer for troubleshooting.{Colors.NC}")
 
 
 class ReportMode:
