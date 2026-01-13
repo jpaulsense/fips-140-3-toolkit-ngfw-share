@@ -1,6 +1,6 @@
 # FIPS 140-3 Compliance Toolkit for Palo Alto Networks
 
-[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share/releases)
+[![Version](https://img.shields.io/badge/version-1.5.2-blue.svg)](https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
@@ -16,7 +16,14 @@ A comprehensive toolkit for achieving FIPS 140-3 cryptographic compliance on Pal
 
 ### Automatic Installation (Recommended)
 
-**Windows:**
+**Windows (PowerShell):**
+```powershell
+git clone https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share.git
+cd fips-140-3-toolkit-ngfw-share
+.\install.ps1
+```
+
+**Windows (Command Prompt):**
 ```cmd
 git clone https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share.git
 cd fips-140-3-toolkit-ngfw-share
@@ -29,6 +36,11 @@ git clone https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share.git
 cd fips-140-3-toolkit-ngfw-share
 ./install.sh
 ```
+
+> **Note for Windows Users**: If you get an execution policy error, run:
+> ```powershell
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
 
 The install script will:
 - Check if Python 3.8+ is installed (provides download links if not)
@@ -174,8 +186,9 @@ For step-by-step instructions including screenshots and troubleshooting, see the
 | Software | Minimum Version | Purpose |
 |----------|-----------------|---------|
 | **Python** | 3.8+ | Python SDK and scripts |
-| **bash** | 4.0+ | Shell scripts |
-| **curl** | 7.68+ | API requests |
+| **bash** | 4.0+ | Shell scripts (macOS/Linux) |
+| **PowerShell** | 5.1+ | Shell scripts (Windows) |
+| **curl** | 7.68+ | API requests (optional, scripts use native methods) |
 | **jq** | 1.6+ | JSON parsing (optional) |
 
 ### SCM Requirements
@@ -241,18 +254,41 @@ sudo pip3 install requests
 
 If you prefer to work directly with firewalls without the interactive tool:
 
+**Bash (macOS/Linux):**
 ```bash
 # Run the standalone validator
 python3 08-validation-tools/fips-compliance-validator.py \
     -f <firewall_ip> \
     -u <username> \
     -p <password>
+
+# Or use the bash script directly
+./08-validation-tools/fips-compliance-validator.sh \
+    -f <firewall_ip> \
+    -u <username> \
+    -p <password>
+```
+
+**PowerShell (Windows):**
+```powershell
+# Run the standalone validator (Python)
+python 08-validation-tools/fips-compliance-validator.py `
+    -f <firewall_ip> `
+    -u <username> `
+    -p <password>
+
+# Or use the PowerShell script directly
+.\08-validation-tools\fips-compliance-validator.ps1 `
+    -Firewall <firewall_ip> `
+    -Username <username> `
+    -Password <password>
 ```
 
 ### SCM with Environment Variables
 
 For CI/CD pipelines or scripted usage:
 
+**Bash (macOS/Linux):**
 ```bash
 # Set environment variables
 export SCM_CLIENT_ID="your-service-account@tenant.iam.panserviceaccount.com"
@@ -264,6 +300,29 @@ python3 09-scm-api-toolkit/07-examples/validate-compliance.py
 
 # Deploy profiles
 python3 09-scm-api-toolkit/07-examples/deploy-fips-profiles.py
+
+# Or use shell scripts
+./09-scm-api-toolkit/01-authentication/scm-auth.sh token
+./09-scm-api-toolkit/07-examples/deploy-fips-profiles.sh
+```
+
+**PowerShell (Windows):**
+```powershell
+# Set environment variables
+$env:SCM_CLIENT_ID = "your-service-account@tenant.iam.panserviceaccount.com"
+$env:SCM_CLIENT_SECRET = "your-client-secret-uuid"
+$env:SCM_TSG_ID = "1234567890"
+
+# Run audit
+python 09-scm-api-toolkit/07-examples/validate-compliance.py
+
+# Deploy profiles (Python)
+python 09-scm-api-toolkit/07-examples/deploy-fips-profiles.py
+
+# Or use PowerShell scripts
+.\09-scm-api-toolkit\01-authentication\scm-auth.ps1 token
+.\09-scm-api-toolkit\07-examples\deploy-fips-profiles.ps1
+.\09-scm-api-toolkit\07-examples\deploy-fips-profiles.ps1 -Certificate "Forward-Trust-CA"
 ```
 
 ### Manual Firewall Configuration
@@ -289,7 +348,8 @@ commit
 ```
 .
 ├── fips-toolkit.py              # MAIN ENTRY POINT - Interactive toolkit
-├── install.bat                  # Windows automatic installer
+├── install.ps1                  # Windows PowerShell installer (recommended)
+├── install.bat                  # Windows Command Prompt installer
 ├── install.sh                   # macOS/Linux automatic installer
 ├── README.md                    # This file
 ├── LICENSE                      # MIT License
@@ -314,14 +374,21 @@ commit
 ├── 07-api-reference/           # PAN-OS API reference
 │
 ├── 08-validation-tools/        # Automated validation tools
-│   ├── fips-compliance-validator.py   # Standalone firewall validator
+│   ├── fips-compliance-validator.py   # Standalone firewall validator (Python)
+│   ├── fips-compliance-validator.sh   # Standalone firewall validator (Bash)
+│   ├── fips-compliance-validator.ps1  # Standalone firewall validator (PowerShell)
 │   ├── fips-profile-cleanup.py        # Profile cleanup utility
 │   └── sample-reports/                # Example validation reports
 │
 └── 09-scm-api-toolkit/         # Strata Cloud Manager API toolkit
     ├── 01-authentication/      # OAuth2 authentication helpers
+    │   ├── scm-auth.sh         # Token helper (Bash)
+    │   └── scm-auth.ps1        # Token helper (PowerShell)
     ├── 06-python-sdk/          # Python SDK (scm_client.py)
     └── 07-examples/            # Working deployment examples
+        ├── deploy-fips-profiles.py   # Deploy profiles (Python)
+        ├── deploy-fips-profiles.sh   # Deploy profiles (Bash)
+        └── deploy-fips-profiles.ps1  # Deploy profiles (PowerShell)
 ```
 
 ## FIPS 140-3 Requirements
@@ -382,16 +449,23 @@ commit
 ### SCM Python SDK
 
 ```python
-from sdk.scm_client import SCMClient
+import sys
+sys.path.insert(0, '09-scm-api-toolkit/06-python-sdk')
+from scm_client import SCMClient, SCMConfig
 
-# Initialize client (uses environment variables)
-client = SCMClient()
+# Initialize client with credentials
+config = SCMConfig(
+    client_id="your-client-id@tenant.iam.panserviceaccount.com",
+    client_secret="your-client-secret",
+    tsg_id="1234567890"
+)
+client = SCMClient(config)
 
-# Create FIPS IKE profile
-client.create_fips_ike_profile(tier="recommended")
+# Or use environment variables (SCM_CLIENT_ID, SCM_CLIENT_SECRET, SCM_TSG_ID)
+# client = SCMClient()
 
-# Create FIPS IPSec profile
-client.create_fips_ipsec_profile(tier="recommended")
+# List existing profiles
+profiles = client.list_ike_crypto_profiles(folder="Shared")
 
 # Push configuration
 client.push_config(folders=["Shared"])
