@@ -1,6 +1,6 @@
 # FIPS 140-3 Compliance Toolkit for Palo Alto Networks
 
-[![Version](https://img.shields.io/badge/version-1.5.2-blue.svg)](https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share/releases)
+[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/jpaulsense/fips-140-3-toolkit-ngfw-share/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
