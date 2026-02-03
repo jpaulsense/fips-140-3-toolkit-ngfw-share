@@ -143,35 +143,90 @@ else
     print_success "Found pip $PIP_VERSION"
 fi
 
-# Upgrade pip to latest version
-print_status "Upgrading pip to latest version..."
-$PIP_CMD install --upgrade pip --quiet 2>/dev/null || true
+# Determine the script's directory (where the toolkit lives)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="$SCRIPT_DIR/.venv"
+USE_VENV=false
 
-# Install requests
-print_status "Installing required dependencies..."
-
-if $PYTHON_CMD -c "import requests" &> /dev/null; then
+# If a venv already exists with requests, use it directly
+if [ -f "$VENV_DIR/bin/python3" ] && "$VENV_DIR/bin/python3" -c "import requests" &> /dev/null; then
+    PYTHON_CMD="$VENV_DIR/bin/python3"
+    PIP_CMD="$PYTHON_CMD -m pip"
+    USE_VENV=true
+    REQUESTS_VERSION=$($PYTHON_CMD -c "import requests; print(requests.__version__)")
+    print_success "Using existing virtual environment"
+    print_success "requests $REQUESTS_VERSION already installed (venv)"
+elif $PYTHON_CMD -c "import requests" &> /dev/null; then
+    # requests already available system-wide
     REQUESTS_VERSION=$($PYTHON_CMD -c "import requests; print(requests.__version__)")
     print_success "requests $REQUESTS_VERSION already installed"
 else
+    # Upgrade pip to latest version
+    print_status "Upgrading pip to latest version..."
+    $PIP_CMD install --upgrade pip --quiet 2>/dev/null || true
+
+    # Install requests
+    print_status "Installing required dependencies..."
     print_status "Installing requests..."
-    # Try normal install first, fall back to --user if it fails (e.g., on macOS with system Python)
-    if ! $PIP_CMD install requests --quiet 2>/dev/null; then
-        print_warning "System install failed, trying user install..."
-        $PIP_CMD install requests --user --quiet
+
+    # Try normal install first
+    INSTALL_OK=false
+    if $PIP_CMD install requests --quiet 2>/dev/null; then
+        if $PYTHON_CMD -c "import requests" &> /dev/null; then
+            INSTALL_OK=true
+            REQUESTS_VERSION=$($PYTHON_CMD -c "import requests; print(requests.__version__)")
+            print_success "requests $REQUESTS_VERSION installed"
+        fi
     fi
 
-    # Verify it actually installed for this Python
-    if $PYTHON_CMD -c "import requests" &> /dev/null; then
-        REQUESTS_VERSION=$($PYTHON_CMD -c "import requests; print(requests.__version__)")
-        print_success "requests $REQUESTS_VERSION installed"
-    else
-        print_error "requests installed but not importable by $PYTHON_CMD"
-        echo ""
-        echo "This usually means pip installed to a different Python."
-        echo "Try running manually:"
-        echo "  $PYTHON_CMD -m pip install requests"
-        exit 1
+    # Try --user install if system install failed
+    if [ "$INSTALL_OK" = false ]; then
+        print_warning "System install failed, trying user install..."
+        if $PIP_CMD install requests --user --quiet 2>/dev/null; then
+            if $PYTHON_CMD -c "import requests" &> /dev/null; then
+                INSTALL_OK=true
+                REQUESTS_VERSION=$($PYTHON_CMD -c "import requests; print(requests.__version__)")
+                print_success "requests $REQUESTS_VERSION installed (user)"
+            fi
+        fi
+    fi
+
+    # Fall back to virtual environment (PEP 668 / externally-managed Python)
+    if [ "$INSTALL_OK" = false ]; then
+        print_warning "pip install blocked (PEP 668 - externally managed environment)"
+        print_status "Creating virtual environment at .venv ..."
+
+        if ! $PYTHON_CMD -m venv "$VENV_DIR" 2>/dev/null; then
+            print_error "Failed to create virtual environment"
+            echo ""
+            echo "You may need to install the venv module:"
+            if [ "$OS" == "macos" ]; then
+                echo "  brew install python3"
+            else
+                echo "  sudo apt install python3-venv   (Ubuntu/Debian)"
+                echo "  sudo dnf install python3-venv   (Fedora/RHEL)"
+            fi
+            exit 1
+        fi
+
+        print_success "Virtual environment created"
+        USE_VENV=true
+
+        # Switch to venv Python and pip
+        PYTHON_CMD="$VENV_DIR/bin/python3"
+        PIP_CMD="$PYTHON_CMD -m pip"
+
+        print_status "Installing requests in virtual environment..."
+        $PIP_CMD install --upgrade pip --quiet 2>/dev/null || true
+        $PIP_CMD install requests --quiet
+
+        if $PYTHON_CMD -c "import requests" &> /dev/null; then
+            REQUESTS_VERSION=$($PYTHON_CMD -c "import requests; print(requests.__version__)")
+            print_success "requests $REQUESTS_VERSION installed (venv)"
+        else
+            print_error "Failed to install requests in virtual environment"
+            exit 1
+        fi
     fi
 fi
 
@@ -188,12 +243,25 @@ fi
 
 # Check if we're in the toolkit directory
 echo ""
-if [ -f "fips-toolkit.py" ]; then
+if [ -f "$SCRIPT_DIR/fips-toolkit.py" ] || [ -f "fips-toolkit.py" ]; then
     print_success "Ready to run the toolkit!"
     echo ""
-    echo "Run the toolkit with:"
-    echo "  $PYTHON_CMD fips-toolkit.py"
-    echo ""
+
+    if [ "$USE_VENV" = true ]; then
+        echo "A virtual environment was created. Run the toolkit with:"
+        echo ""
+        echo "  Option 1 - Use the venv Python directly (recommended):"
+        echo "    $PYTHON_CMD fips-toolkit.py"
+        echo ""
+        echo "  Option 2 - Activate the venv first:"
+        echo "    source .venv/bin/activate"
+        echo "    python3 fips-toolkit.py"
+        echo ""
+    else
+        echo "Run the toolkit with:"
+        echo "  $PYTHON_CMD fips-toolkit.py"
+        echo ""
+    fi
 
     read -p "Would you like to run the toolkit now? [Y/n] " -n 1 -r
     echo
@@ -203,6 +271,13 @@ if [ -f "fips-toolkit.py" ]; then
 else
     print_success "Dependencies installed!"
     echo ""
-    echo "Navigate to the toolkit directory and run:"
-    echo "  $PYTHON_CMD fips-toolkit.py"
+    if [ "$USE_VENV" = true ]; then
+        echo "A virtual environment was created at: $VENV_DIR"
+        echo ""
+        echo "Navigate to the toolkit directory and run:"
+        echo "  $VENV_DIR/bin/python3 fips-toolkit.py"
+    else
+        echo "Navigate to the toolkit directory and run:"
+        echo "  $PYTHON_CMD fips-toolkit.py"
+    fi
 fi

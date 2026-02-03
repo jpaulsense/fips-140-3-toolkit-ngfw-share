@@ -31,7 +31,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 # Version
-__version__ = "1.6.0"
+__version__ = "1.6.1"
 
 # Check for required dependencies early
 def check_dependencies():

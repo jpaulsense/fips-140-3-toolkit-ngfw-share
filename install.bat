@@ -101,23 +101,83 @@ REM Upgrade pip
 echo [*] Upgrading pip to latest version...
 %PYTHON_CMD% -m pip install --upgrade pip --quiet 2>nul
 
-REM Check if requests is installed
+REM Check if a venv already exists with requests
+set USE_VENV=0
+set VENV_DIR=%~dp0.venv
+if exist "%VENV_DIR%\Scripts\python.exe" (
+    "%VENV_DIR%\Scripts\python.exe" -c "import requests" >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        set PYTHON_CMD="%VENV_DIR%\Scripts\python.exe"
+        set USE_VENV=1
+        echo [+] Using existing virtual environment
+        for /f %%i in ('"%VENV_DIR%\Scripts\python.exe" -c "import requests; print(requests.__version__)"') do set REQ_VERSION=%%i
+        echo [+] requests !REQ_VERSION! already installed (venv)
+        goto :install_done
+    )
+)
+
+REM Check if requests is installed system-wide
 echo [*] Checking for required dependencies...
 
 %PYTHON_CMD% -c "import requests" >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
     for /f %%i in ('%PYTHON_CMD% -c "import requests; print(requests.__version__)"') do set REQ_VERSION=%%i
     echo [+] requests !REQ_VERSION! already installed
-) else (
-    echo [*] Installing requests...
-    %PYTHON_CMD% -m pip install requests --quiet
-    if %ERRORLEVEL% NEQ 0 (
-        echo [X] Failed to install requests
-        goto :error_exit
-    )
-    for /f %%i in ('%PYTHON_CMD% -c "import requests; print(requests.__version__)"') do set REQ_VERSION=%%i
-    echo [+] requests !REQ_VERSION! installed
+    goto :install_done
 )
+
+echo [*] Installing requests...
+%PYTHON_CMD% -m pip install requests --quiet 2>nul
+if %ERRORLEVEL% EQU 0 (
+    %PYTHON_CMD% -c "import requests" >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        for /f %%i in ('%PYTHON_CMD% -c "import requests; print(requests.__version__)"') do set REQ_VERSION=%%i
+        echo [+] requests !REQ_VERSION! installed
+        goto :install_done
+    )
+)
+
+REM pip install failed - try --user
+echo [!] System install failed, trying user install...
+%PYTHON_CMD% -m pip install requests --user --quiet 2>nul
+%PYTHON_CMD% -c "import requests" >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    for /f %%i in ('%PYTHON_CMD% -c "import requests; print(requests.__version__)"') do set REQ_VERSION=%%i
+    echo [+] requests !REQ_VERSION! installed (user)
+    goto :install_done
+)
+
+REM Fall back to virtual environment (PEP 668 / externally managed)
+echo [!] pip install blocked (PEP 668 - externally managed environment)
+echo [*] Creating virtual environment at .venv ...
+
+%PYTHON_CMD% -m venv "%VENV_DIR%" 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo [X] Failed to create virtual environment
+    echo.
+    echo Please install Python from https://www.python.org/downloads/windows/
+    echo (The official installer does not have this restriction)
+    goto :error_exit
+)
+
+echo [+] Virtual environment created
+set USE_VENV=1
+set PYTHON_CMD="%VENV_DIR%\Scripts\python.exe"
+
+echo [*] Installing requests in virtual environment...
+%PYTHON_CMD% -m pip install --upgrade pip --quiet 2>nul
+%PYTHON_CMD% -m pip install requests --quiet
+
+%PYTHON_CMD% -c "import requests" >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [X] Failed to install requests in virtual environment
+    goto :error_exit
+)
+
+for /f %%i in ('%PYTHON_CMD% -c "import requests; print(requests.__version__)"') do set REQ_VERSION=%%i
+echo [+] requests !REQ_VERSION! installed (venv)
+
+:install_done
 
 REM Verify installation
 echo.
@@ -136,9 +196,22 @@ REM Check if we're in the toolkit directory
 if exist "fips-toolkit.py" (
     echo [+] Ready to run the toolkit!
     echo.
-    echo Run the toolkit with:
-    echo   %PYTHON_CMD% fips-toolkit.py
-    echo.
+
+    if !USE_VENV! EQU 1 (
+        echo A virtual environment was created. Run the toolkit with:
+        echo.
+        echo   Option 1 - Use the venv Python directly (recommended):
+        echo     %PYTHON_CMD% fips-toolkit.py
+        echo.
+        echo   Option 2 - Activate the venv first:
+        echo     .venv\Scripts\activate
+        echo     python fips-toolkit.py
+        echo.
+    ) else (
+        echo Run the toolkit with:
+        echo   %PYTHON_CMD% fips-toolkit.py
+        echo.
+    )
 
     set /p RUNNOW="Would you like to run the toolkit now? [Y/n] "
     if /i "!RUNNOW!"=="" set RUNNOW=Y
@@ -148,8 +221,15 @@ if exist "fips-toolkit.py" (
 ) else (
     echo [+] Dependencies installed!
     echo.
-    echo Navigate to the toolkit directory and run:
-    echo   %PYTHON_CMD% fips-toolkit.py
+    if !USE_VENV! EQU 1 (
+        echo A virtual environment was created at: %VENV_DIR%
+        echo.
+        echo Navigate to the toolkit directory and run:
+        echo   %PYTHON_CMD% fips-toolkit.py
+    ) else (
+        echo Navigate to the toolkit directory and run:
+        echo   %PYTHON_CMD% fips-toolkit.py
+    )
 )
 
 goto :end

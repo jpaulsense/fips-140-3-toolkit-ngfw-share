@@ -174,62 +174,136 @@ if ($pipWorks) {
     Write-Success "Found pip $pipVersion"
 }
 
-# Upgrade pip
-Write-Status "Upgrading pip to latest version..."
-& $PythonCmd -m pip install --upgrade pip --quiet 2>&1 | Out-Null
+# Determine script directory and venv path
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$VenvDir = Join-Path $ScriptDir ".venv"
+$UseVenv = $false
 
-# Check/install requests
-Write-Status "Checking for required dependencies..."
-
-$requestsInstalled = $false
-try {
-    $requestsVersion = & $PythonCmd -c "import requests; print(requests.__version__)" 2>&1
+# Check if a venv already exists with requests
+$venvPython = Join-Path $VenvDir "Scripts\python.exe"
+if (Test-Path $venvPython) {
+    $null = & $venvPython -c "import requests" 2>&1
     if ($LASTEXITCODE -eq 0) {
+        $PythonCmd = $venvPython
+        $UseVenv = $true
+        $requestsVersion = & $PythonCmd -c "import requests; print(requests.__version__)"
+        Write-Success "Using existing virtual environment"
+        Write-Success "requests $requestsVersion already installed (venv)"
         $requestsInstalled = $true
-        Write-Success "requests $requestsVersion already installed"
     }
 }
-catch {
+
+if (-not $UseVenv) {
+    # Check if requests already available system-wide
     $requestsInstalled = $false
+    try {
+        $requestsVersion = & $PythonCmd -c "import requests; print(requests.__version__)" 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $requestsInstalled = $true
+            Write-Success "requests $requestsVersion already installed"
+        }
+    }
+    catch {
+        $requestsInstalled = $false
+    }
 }
 
 if (-not $requestsInstalled) {
-    Write-Status "Installing requests..."
-    & $PythonCmd -m pip install requests --quiet
+    # Upgrade pip
+    Write-Status "Upgrading pip to latest version..."
+    & $PythonCmd -m pip install --upgrade pip --quiet 2>&1 | Out-Null
 
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Failed to install requests"
-        exit 1
+    # Try normal install
+    Write-Status "Installing requests..."
+    & $PythonCmd -m pip install requests --quiet 2>&1 | Out-Null
+
+    $null = & $PythonCmd -c "import requests" 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        $requestsVersion = & $PythonCmd -c "import requests; print(requests.__version__)"
+        Write-Success "requests $requestsVersion installed"
+        $requestsInstalled = $true
     }
 
-    $requestsVersion = & $PythonCmd -c "import requests; print(requests.__version__)"
-    Write-Success "requests $requestsVersion installed"
+    # Try --user install
+    if (-not $requestsInstalled) {
+        Write-Warning "System install failed, trying user install..."
+        & $PythonCmd -m pip install requests --user --quiet 2>&1 | Out-Null
+
+        $null = & $PythonCmd -c "import requests" 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $requestsVersion = & $PythonCmd -c "import requests; print(requests.__version__)"
+            Write-Success "requests $requestsVersion installed (user)"
+            $requestsInstalled = $true
+        }
+    }
+
+    # Fall back to virtual environment (PEP 668 / externally managed)
+    if (-not $requestsInstalled) {
+        Write-Warning "pip install blocked (PEP 668 - externally managed environment)"
+        Write-Status "Creating virtual environment at .venv ..."
+
+        & $PythonCmd -m venv $VenvDir 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to create virtual environment"
+            Write-Host ""
+            Write-Host "Please install Python from https://www.python.org/downloads/windows/"
+            Write-Host "(The official installer does not have this restriction)"
+            exit 1
+        }
+
+        Write-Success "Virtual environment created"
+        $UseVenv = $true
+        $PythonCmd = Join-Path $VenvDir "Scripts\python.exe"
+
+        Write-Status "Installing requests in virtual environment..."
+        & $PythonCmd -m pip install --upgrade pip --quiet 2>&1 | Out-Null
+        & $PythonCmd -m pip install requests --quiet 2>&1 | Out-Null
+
+        $null = & $PythonCmd -c "import requests" 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to install requests in virtual environment"
+            exit 1
+        }
+
+        $requestsVersion = & $PythonCmd -c "import requests; print(requests.__version__)"
+        Write-Success "requests $requestsVersion installed (venv)"
+        $requestsInstalled = $true
+    }
 }
 
 # Verify installation
 Write-Host ""
 Write-Status "Verifying installation..."
 
-try {
-    $null = & $PythonCmd -c "import requests" 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "Import failed"
-    }
-    Write-Success "All dependencies installed successfully!"
-}
-catch {
+$null = & $PythonCmd -c "import requests" 2>&1
+if ($LASTEXITCODE -ne 0) {
     Write-Error "Installation verification failed"
     exit 1
 }
+Write-Success "All dependencies installed successfully!"
 
 # Check if we're in the toolkit directory
 Write-Host ""
 if (Test-Path "fips-toolkit.py") {
     Write-Success "Ready to run the toolkit!"
     Write-Host ""
-    Write-Host "Run the toolkit with:"
-    Write-Host "  $PythonCmd fips-toolkit.py"
-    Write-Host ""
+
+    if ($UseVenv) {
+        Write-Host "A virtual environment was created. Run the toolkit with:"
+        Write-Host ""
+        Write-Host "  Option 1 - Use the venv Python directly (recommended):"
+        Write-Host "    $PythonCmd fips-toolkit.py"
+        Write-Host ""
+        Write-Host "  Option 2 - Activate the venv first:"
+        Write-Host "    .venv\Scripts\Activate.ps1"
+        Write-Host "    python fips-toolkit.py"
+        Write-Host ""
+    }
+    else {
+        Write-Host "Run the toolkit with:"
+        Write-Host "  $PythonCmd fips-toolkit.py"
+        Write-Host ""
+    }
 
     $runNow = Read-Host "Would you like to run the toolkit now? [Y/n]"
     if ($runNow -eq "" -or $runNow -match "^[Yy]") {
@@ -239,8 +313,16 @@ if (Test-Path "fips-toolkit.py") {
 else {
     Write-Success "Dependencies installed!"
     Write-Host ""
-    Write-Host "Navigate to the toolkit directory and run:"
-    Write-Host "  $PythonCmd fips-toolkit.py"
+    if ($UseVenv) {
+        Write-Host "A virtual environment was created at: $VenvDir"
+        Write-Host ""
+        Write-Host "Navigate to the toolkit directory and run:"
+        Write-Host "  $PythonCmd fips-toolkit.py"
+    }
+    else {
+        Write-Host "Navigate to the toolkit directory and run:"
+        Write-Host "  $PythonCmd fips-toolkit.py"
+    }
 }
 
 Write-Host ""
